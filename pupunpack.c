@@ -68,15 +68,17 @@ int main(int argc, char *argv[])
 {
 	(void)argc;
 
-	if (argv[2] == 0)
+	if (argc < 3)
 		return 0;
-
-	mkdir(argv[2], 0777);
-	chdir(argv[2]);
 
 	pup = mmap_file(argv[1]);
 
-	do_pup();
+	if(pup != NULL)
+	{
+		mkdir(argv[2], 0777);
+		chdir(argv[2]);
+		do_pup();
+	}
 
 	return 0;
 }

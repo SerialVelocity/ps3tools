@@ -18,6 +18,7 @@ static u8 *elf;
 static struct elf_hdr ehdr;
 
 static int arch64;
+static u32 meta_offset;
 static u64 elf_offset;
 static u64 elf2_offset;
 static u64 phdr_offset;
@@ -109,6 +110,7 @@ static struct id2name_tbl t_phdr_type[] = {
 
 static void parse_self(void)
 {
+	meta_offset = be32(self + 12);
 	elf_offset = be64(self + 48);
 	elf2_offset = be64(self + 0x10);
 	phdr_offset = be64(self + 56) - elf_offset;
@@ -134,6 +136,7 @@ static void show_self_header(void)
 	printf("SELF header\n");
 	printf("  elf #1 offset:  %08x_%08x\n", (u32)(elf_offset>>32), (u32)elf_offset);
 	printf("  elf #2 offset:  %08x_%08x\n", (u32)(elf2_offset>>32), (u32)elf2_offset);
+	printf("  meta offset:    %08x_%08x\n", 0, meta_offset);
 	printf("  phdr offset:    %08x_%08x\n", (u32)(phdr_offset>>32), (u32)phdr_offset);
 	printf("  shdr offset:    %08x_%08x\n", (u32)(shdr_offset>>32), (u32)shdr_offset);
 	printf("  file size:      %08x_%08x\n", (u32)(filesize>>32), (u32)filesize);

@@ -17,9 +17,25 @@ void *mmap_file(const char *path)
 	void *ptr;
 
 	fd = open(path, O_RDONLY);
-	fstat(fd, &st);
+	if(fd == -1)
+	{
+		perror("open");
+		printf("trying to open '%s'\n", path);
+	}
+	if(fstat(fd, &st) != 0)
+	{
+		perror("fstat");
+		close(fd);
+		return NULL;
+	}
 
 	ptr = mmap(0, st.st_size, PROT_READ, MAP_SHARED, fd, 0);
+	if(ptr==NULL)
+	{
+		perror("mmap");
+		close(fd);
+		return NULL;
+	}
 	close(fd);
 
 	return ptr;
