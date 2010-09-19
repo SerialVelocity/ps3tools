@@ -1,3 +1,6 @@
+// Copyright 2010       Sven Peter <svenpeter@gmail.com>
+// Licensed under the terms of the GNU GPL, version 2
+// http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt
 #include <stdio.h>
 #include <sys/stat.h>
 #include <unistd.h>

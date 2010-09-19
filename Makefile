@@ -1,9 +1,9 @@
-TOOLS	=	pupunpack
+TOOLS	=	readself pupunpack
 COMMON	=	tools.o
-DEPS	=	Makefile tools.h
+DEPS	=	Makefile tools.h types.h
 
 CC	=	gcc
-CFLAGS	=	-W -Wall -Wextra
+CFLAGS	=	-g -W -Wall -Wextra
 LDFLAGS =
 
 OBJS	= $(COMMON) $(addsuffix .o, $(TOOLS))

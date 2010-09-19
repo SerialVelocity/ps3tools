@@ -1,34 +1,23 @@
+// Copyright 2010       Sven Peter <svenpeter@gmail.com>
+// Copyright 2007,2008  Segher Boessenkool  <segher@kernel.crashing.org>
+// Licensed under the terms of the GNU GPL, version 2
+// http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt
+
 #ifndef TOOLS_H__
 #define TOOLS_H__ 1
 #include <stdint.h>
 
-typedef uint64_t u64;
-typedef uint32_t u32;
-typedef uint16_t u16;
-typedef uint8_t u8;
+#include "types.h"
 
 void *mmap_file(const char *path);
 void memcpy_to_file(const char *fname, u8 *ptr, u64 size);
 
-static inline u32 be32(u8 *p)
-{
-	u32 a;
+int elf_read_hdr(u8 *hdr, struct elf_hdr *h);
+void elf_read_phdr(int arch64, u8 *phdr, struct elf_phdr *p);
+void elf_read_shdr(int arch64, u8 *shdr, struct elf_shdr *s);
 
-	a  = p[0] << 24;
-	a |= p[1] << 16;
-	a |= p[2] <<  8;
-	a |= p[3] <<  0;
 
-	return a;
-}
+#define		round_up(x,n)	(-(-(x) & -(n)))
 
-static inline u64 be64(u8 *p)
-{
-	u32 a, b;
-
-	a = be32(p);
-	b = be32(p + 4);
-
-	return ((u64)a<<32) | b;
-}
+#define		array_size(x)	(sizeof(x) / sizeof(*(x)))
 #endif
