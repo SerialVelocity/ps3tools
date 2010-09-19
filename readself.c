@@ -2,6 +2,12 @@
 // Licensed under the terms of the GNU GPL, version 2
 // http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt
 
+//
+// Thanks to xorloser for his selftool!
+// (see xorloser.com)
+//
+
+
 #include <stdio.h>
 #include <string.h>
 #include "tools.h"
@@ -70,7 +76,7 @@ static struct id2name_tbl t_shdr_type[] = {
 	{9, "REL"},
 	{10, "SHLIB"},
 	{11, "DYNSYM"},
-	{12, "NULL"},
+	{12, NULL},
 };
 
 static struct id2name_tbl t_elf_type[] = {
