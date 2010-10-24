@@ -6,10 +6,10 @@
 
 #include <stdint.h>
 
-typedef uint64_t u64;
-typedef uint32_t u32;
-typedef uint16_t u16;
-typedef uint8_t u8;
+typedef unsigned long long u64;
+typedef unsigned int u32;
+typedef unsigned short u16;
+typedef unsigned char u8;
 
 struct elf_phdr {
 	u32 p_type;

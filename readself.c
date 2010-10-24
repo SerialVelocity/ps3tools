@@ -168,6 +168,13 @@ static void show_self_header(void)
 	printf("\n");
 }
 
+static void print_hash(u8 *ptr, u32 len)
+{
+	while(len--)
+		printf(" %02x", *ptr++);
+}
+
+
 static void show_ctrl(void)
 {
 	u32 i, j;
@@ -182,31 +189,50 @@ static void show_ctrl(void)
 			case 1:
 				if (length == 0x30) {
 					printf("  control flags:\n    ");
-					for (j = 0x10; j < 0x20; j++)
-						printf("%02x ", be8(self + ctrl_offset + i + j));
+					print_hash(self + ctrl_offset + i + 0x10, 0x10);
 					printf("\n");
 					break;
 				}
 			case 2:
 				if (length == 0x40) {
 					printf("  file digest:\n    ");
-					for (j = 0x24; j < 0x38; j++)
-						printf("%02x ", be8(self + ctrl_offset + i + j));
+					print_hash(self + ctrl_offset + i + 0x24, 0x14);
 					printf("\n");
 					break;
 				}
 				if (length == 0x30) {
 					printf("  file digest:\n    ");
-					for (j = 0x10; j < 0x24; j++)
-						printf("%02x ", be8(self + ctrl_offset + i + j));
+					print_hash(self + ctrl_offset + i + 0x10, 0x14);
+					printf("\n");
+					break;
+				}
+			case 3:
+				if (length == 0x90) {
+
+					char id[0x31];
+					memset(id, 0, 0x31);
+					memcpy(id, self + ctrl_offset + i + 0x20, 0x30);
+
+					printf("  NPDRM info:\n");
+					printf("    magic: %08x\n", be32(self + ctrl_offset + i + 0x10));
+					printf("    unk0 : %08x\n", be32(self + ctrl_offset + i + 0x14));
+					printf("    unk1 : %08x\n", be32(self + ctrl_offset + i + 0x18));
+					printf("    unk2 : %08x\n", be32(self + ctrl_offset + i + 0x1c));
+					printf("    content_id: %s\n", id);
+					printf("    digest:    ");
+					print_hash(self + ctrl_offset + i + 0x50, 0x10);
+					printf("\n    invdigest: ");
+					print_hash(self + ctrl_offset + i + 0x60, 0x10);
+					printf("\n    xordigest: ");
+					print_hash(self + ctrl_offset + i + 0x70, 0x10);
 					printf("\n");
 					break;
 				}
 			default:
-				printf("unknown:\n");
+				printf("  unknown:\n");
 				for(j = 0; j < length; j++) {
-					if ((i % 16) == 0)
-						printf(" ");
+					if ((j % 16) == 0)
+						printf("   ");
 					printf(" %02x", be8(self + ctrl_offset + i + j));
 					if ((j % 16) == 15 || (j == length - 1))
 						printf("\n");
