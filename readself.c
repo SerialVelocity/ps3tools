@@ -20,7 +20,7 @@ static struct elf_hdr ehdr;
 static int arch64;
 static u32 meta_offset;
 static u64 elf_offset;
-static u64 elf2_offset;
+static u64 header_len;
 static u64 phdr_offset;
 static u64 shdr_offset;
 static u64 filesize;
@@ -28,6 +28,12 @@ static u64 authid;
 static u64 app_version;
 static u32 app_type;
 static u16 sdk_type;
+static u64 info_offset;
+static u64 sec_offset;
+static u64 ver_info;
+static u64 ctrl_offset;
+static u64 ctrl_size;
+
 
 
 struct id2name_tbl {
@@ -110,16 +116,22 @@ static struct id2name_tbl t_phdr_type[] = {
 
 static void parse_self(void)
 {
-	meta_offset = be32(self + 12);
-	elf_offset = be64(self + 48);
-	elf2_offset = be64(self + 0x10);
-	phdr_offset = be64(self + 56) - elf_offset;
-	shdr_offset = be64(self + 64) - elf_offset;
-	filesize = be64(self + 24);
-	authid = be64(self + 0x70);
-	app_version = be64(self + 0x80);
-	app_type = be32(self + 0x7c);
-	sdk_type = be16(self + 0x08);
+	sdk_type =    be16(self + 0x08);
+	meta_offset = be32(self + 0x0c);
+	header_len =  be64(self + 0x10);
+	filesize =    be64(self + 0x18);
+	info_offset = be64(self + 0x28);
+	elf_offset =  be64(self + 0x30);
+	phdr_offset = be64(self + 0x38) - elf_offset;
+	shdr_offset = be64(self + 0x40) - elf_offset;
+	sec_offset =  be64(self + 0x48);
+	ver_info =    be64(self + 0x50);
+	ctrl_offset = be64(self + 0x58);
+	ctrl_size =   be64(self + 0x60);
+
+	authid =      be64(self + info_offset + 0x00);
+	app_type =    be32(self + info_offset + 0x0c);
+	app_version = be64(self + info_offset + 0x10);
 
 	elf = self + elf_offset;
 	arch64 = elf_read_hdr(elf, &ehdr);
@@ -135,16 +147,74 @@ static void show_self_header(void)
 {
 	printf("SELF header\n");
 	printf("  elf #1 offset:  %08x_%08x\n", (u32)(elf_offset>>32), (u32)elf_offset);
-	printf("  elf #2 offset:  %08x_%08x\n", (u32)(elf2_offset>>32), (u32)elf2_offset);
+	printf("  header len:     %08x_%08x\n", (u32)(header_len>>32), (u32)header_len);
 	printf("  meta offset:    %08x_%08x\n", 0, meta_offset);
 	printf("  phdr offset:    %08x_%08x\n", (u32)(phdr_offset>>32), (u32)phdr_offset);
 	printf("  shdr offset:    %08x_%08x\n", (u32)(shdr_offset>>32), (u32)shdr_offset);
 	printf("  file size:      %08x_%08x\n", (u32)(filesize>>32), (u32)filesize);
 	printf("  auth id:        %08x_%08x (%s)\n", (u32)(authid>>32), (u32)authid, get_auth_type());
+	printf("  info offset:    %08x_%08x\n", (u32)(info_offset >> 32), (u32)info_offset);
+	printf("  sinfo offset:   %08x_%08x\n", (u32)(sec_offset >> 32), (u32)sec_offset);	
+	printf("  version offset: %08x_%08x\n", (u32)(ver_info >> 32), (u32)ver_info);
+	printf("  control info:   %08x_%08x (%08x_%08x bytes)\n",
+	         (u32)(ctrl_offset >> 32), (u32)ctrl_offset,
+	         (u32)(ctrl_size >> 32), (u32)ctrl_size);
+
 	printf("  app version:    %d.%d.%d\n", (u16)(app_version >> 48), (u16)(app_version >> 32), (u32)app_version);
 	printf("  SDK type:       %s\n", id2name(sdk_type, t_sdk_type, "unknown"));
 	printf("  app type:       %s\n", id2name(app_type, t_app_type, "unknown"));
 
+
+	printf("\n");
+}
+
+static void show_ctrl(void)
+{
+	u32 i, j;
+	u32 type, length;
+
+	printf("Control info\n");
+
+	for (i = 0; i < ctrl_size; ) {
+		type = be32(self + ctrl_offset + i);
+		length = be32(self + ctrl_offset + i + 0x04);
+		switch (type) {
+			case 1:
+				if (length == 0x30) {
+					printf("  control flags:\n    ");
+					for (j = 0x10; j < 0x20; j++)
+						printf("%02x ", be8(self + ctrl_offset + i + j));
+					printf("\n");
+					break;
+				}
+			case 2:
+				if (length == 0x40) {
+					printf("  file digest:\n    ");
+					for (j = 0x24; j < 0x38; j++)
+						printf("%02x ", be8(self + ctrl_offset + i + j));
+					printf("\n");
+					break;
+				}
+				if (length == 0x30) {
+					printf("  file digest:\n    ");
+					for (j = 0x10; j < 0x24; j++)
+						printf("%02x ", be8(self + ctrl_offset + i + j));
+					printf("\n");
+					break;
+				}
+			default:
+				printf("unknown:\n");
+				for(j = 0; j < length; j++) {
+					if ((i % 16) == 0)
+						printf(" ");
+					printf(" %02x", be8(self + ctrl_offset + i + j));
+					if ((j % 16) == 15 || (j == length - 1))
+						printf("\n");
+				}
+				break;
+		}
+		i += length;
+	}
 	printf("\n");
 }
 
@@ -300,6 +370,7 @@ int main(int argc, char *argv[])
 	parse_self();
 
 	show_self_header();
+	show_ctrl();
 	show_elf_header();
 	show_phdrs();
 	show_shdrs();
