@@ -218,6 +218,33 @@ static void show_ctrl(void)
 	printf("\n");
 }
 
+static void show_sinfo(void)
+{
+	u32 i;
+	u64 offset, size;
+	u32 unk0, unk1, unk2, unk3;
+
+	printf("Section header\n");
+
+	printf("    offset             size              unk0     unk1"
+	       "     unk2     unk3\n");
+
+	for (i = 0; i < ehdr.e_phnum; i++) {
+		offset = be64(self + sec_offset + i*0x20 + 0x00);
+		size = be64(self + sec_offset + i*0x20 + 0x08);
+		unk0 = be32(self + sec_offset + i*0x20 + 0x10);
+		unk1 = be32(self + sec_offset + i*0x20 + 0x14);
+		unk2 = be32(self + sec_offset + i*0x20 + 0x18);
+		unk3 = be32(self + sec_offset + i*0x20 + 0x1c);
+		printf("    %08x_%08x  %08x_%08x %08x %08x %08x %08x\n",
+				(u32)(offset >> 32), (u32)offset,
+				(u32)(size >> 32), (u32)size,
+				unk0, unk1, unk2, unk3);
+	}
+
+	printf("\n");
+}
+
 static void show_elf_header(void)
 {
 	printf("ELF header\n");
@@ -371,6 +398,7 @@ int main(int argc, char *argv[])
 
 	show_self_header();
 	show_ctrl();
+	show_sinfo();
 	show_elf_header();
 	show_phdrs();
 	show_shdrs();
