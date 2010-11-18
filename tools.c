@@ -155,7 +155,7 @@ void fail(const char *a, ...)
 	va_start(va, a);
 	vsnprintf(msg, sizeof msg, a, va);
 	fprintf(stderr, "%s\n", msg);
-	perror("perror: ");
+	perror("perror");
 
 	exit(1);
 }

@@ -448,6 +448,9 @@ static void show_shdrs(void)
 
 int main(int argc, char *argv[])
 {
+	if (argc != 2)
+		fail("usage: readself file.self");
+
 	self = mmap_file(argv[1]);
 
 	parse_self();
