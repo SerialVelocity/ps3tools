@@ -114,6 +114,19 @@ static struct id2name_tbl t_phdr_type[] = {
 	{0, NULL}
 };
 
+static struct id2name_tbl t_compressed[] = {
+	{1, "[NO ]"},
+	{2, "[YES]"},
+	{0, NULL}
+};
+
+static struct id2name_tbl t_encrypted[] = {
+	{0, "[N/A]"},
+	{1, "[YES]"},
+	{2, "[NO ]"},
+	{0, NULL}
+};
+
 static void parse_self(void)
 {
 	sdk_type =    be16(self + 0x08);
@@ -248,24 +261,28 @@ static void show_sinfo(void)
 {
 	u32 i;
 	u64 offset, size;
-	u32 unk0, unk1, unk2, unk3;
+	u32 compressed, encrypted;
+	u32 unk1, unk2;
 
 	printf("Section header\n");
 
-	printf("    offset             size              unk0     unk1"
-	       "     unk2     unk3\n");
+	printf("    offset             size              compressed unk1"
+	       "     unk2     encrypted\n");
 
 	for (i = 0; i < ehdr.e_phnum; i++) {
 		offset = be64(self + sec_offset + i*0x20 + 0x00);
 		size = be64(self + sec_offset + i*0x20 + 0x08);
-		unk0 = be32(self + sec_offset + i*0x20 + 0x10);
+		compressed = be32(self + sec_offset + i*0x20 + 0x10);
 		unk1 = be32(self + sec_offset + i*0x20 + 0x14);
 		unk2 = be32(self + sec_offset + i*0x20 + 0x18);
-		unk3 = be32(self + sec_offset + i*0x20 + 0x1c);
-		printf("    %08x_%08x  %08x_%08x %08x %08x %08x %08x\n",
+		encrypted = be32(self + sec_offset + i*0x20 + 0x1c);
+		printf("    %08x_%08x  %08x_%08x %s      %08x %08x %s\n",
 				(u32)(offset >> 32), (u32)offset,
 				(u32)(size >> 32), (u32)size,
-				unk0, unk1, unk2, unk3);
+				id2name(compressed, t_compressed, "[???]"),
+				unk1, unk2,
+				id2name(encrypted, t_encrypted, "[???]")
+				);
 	}
 
 	printf("\n");
