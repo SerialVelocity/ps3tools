@@ -327,11 +327,25 @@ static void show_phdr(unsigned int idx)
 	char ppc[4], spe[4], rsx[4];
 
 	elf_read_phdr(arch64, elf + phdr_offset + (ehdr.e_phentsize * idx), &p);
+
+	get_flags(p.p_flags, ppc);
+	get_flags(p.p_flags >> 20, spe);
+	get_flags(p.p_flags >> 24, rsx);
+
 	if (arch64) {
+			printf("    %5s %08x_%08x %08x_%08x %08x_%08x\n"
+			       "          %08x_%08x %08x_%08x"
+			       " %s  %s  %s  %08x_%08x\n",
+			      id2name(p.p_type, t_phdr_type, "?????"),
+			      (u32)(p.p_off >> 32) , (u32)p.p_off,
+			      (u32)(p.p_vaddr >> 32) , (u32)p.p_vaddr,
+			      (u32)(p.p_paddr >> 32) , (u32)p.p_paddr,
+			      (u32)(p.p_memsz >> 32) , (u32)p.p_memsz,
+			      (u32)(p.p_filesz >> 32) , (u32)p.p_filesz,
+			      ppc, spe, rsx,
+			      (u32)(p.p_align >> 32) , (u32)p.p_align
+			      );
 	} else {
-		get_flags(p.p_flags, ppc);
-		get_flags(p.p_flags >> 20, spe);
-		get_flags(p.p_flags >> 24, rsx);
 		printf("    %5s %08x %08x %08x "
 		       "%08x %08x  %s  %s  %s  %08x\n",
 		       id2name(p.p_type, t_phdr_type, "?????"),
@@ -363,12 +377,24 @@ static void show_shdr(unsigned int idx)
 	get_shdr_flags(s.sh_flags, flags);
 
 	if (arch64) {
+			printf("  [%02d] %-15s %-9s %08x_%08x"
+				" %02d %-3s %02d %03d %02d\n"
+				"       %08x_%08x         %08x_%08x\n",
+				idx, "<no-name>",
+				id2name(s.sh_type, t_shdr_type, "????"),
+				(u32)(s.sh_addr >> 32), (u32)s.sh_addr,
+				s.sh_entsize, flags, s.sh_link, s.sh_info,
+				s.sh_addralign,
+				(u32)(s.sh_offset >> 32), (u32)s.sh_offset,
+				0, (u32)s.sh_size
+				);
 	} else {
 		printf("  [%02d] %-15s %-9s %08x"
 			" %08x %08x   %02d %-3s %02d  %02d %02d\n",
 			idx, "<no-name>",
 			id2name(s.sh_type, t_shdr_type, "????"),
-			(u32)s.sh_addr, (u32)s.sh_offset, s.sh_size, s.sh_entsize,
+			(u32)s.sh_addr, (u32)s.sh_offset,
+			s.sh_size, s.sh_entsize,
 		       	flags, s.sh_link, s.sh_info, s.sh_addralign);
 
 	}
@@ -384,10 +410,12 @@ static void show_phdrs(void)
 		printf("No program headers in this file.\n");
 	} else {
 		if (arch64)
-			printf("\n");
+			printf("    type  offset            vaddr             "
+			       "paddr\n          memsize           filesize"
+			       "          PPU  SPE  RSX  align\n");
 		else
-		printf("    type  offset   vaddr    paddr    "
-		       "memsize  filesize  PPU  SPE  RSX  align\n");
+			printf("    type  offset   vaddr    paddr    "
+			       "memsize  filesize  PPU  SPE  RSX  align\n");
 		for (i = 0; i < ehdr.e_phnum; i++)
 			show_phdr(i);
 	}
@@ -405,10 +433,12 @@ static void show_shdrs(void)
 		printf("No section headers in this file.\n");
 	} else {
 		if (arch64)
-			printf("\n");
+			printf("  [Nr] Name            Type      Addr"
+				"              ES Flg Lk Inf Al\n"
+				"       Off                       Size\n");
 		else
 			printf("  [Nr] Name            Type      Addr"
-				"     Off      Size       ES Flg Lk Inf Al\n");
+		               "     Off      Size       ES Flg Lk Inf Al\n");
 		for (i = 0; i < ehdr.e_shnum; i++)
 			show_shdr(i);
 	}

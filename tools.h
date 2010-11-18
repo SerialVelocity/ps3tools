@@ -16,6 +16,7 @@ int elf_read_hdr(u8 *hdr, struct elf_hdr *h);
 void elf_read_phdr(int arch64, u8 *phdr, struct elf_phdr *p);
 void elf_read_shdr(int arch64, u8 *shdr, struct elf_shdr *s);
 
+void fail(const char *fmt, ...);
 
 #define		round_up(x,n)	(-(-(x) & -(n)))
 

@@ -7,6 +7,8 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include <string.h>
+#include <stdarg.h>
+#include <stdlib.h>
 
 #include "tools.h"
 
@@ -143,5 +145,18 @@ void elf_read_shdr(int arch64, u8 *shdr, struct elf_shdr *s)
 		s->sh_addralign = be32(shdr + 8*4);
 		s->sh_entsize =   be32(shdr + 9*4);
 	}
+}
+
+void fail(const char *a, ...)
+{
+	char msg[1024];
+	va_list va;
+
+	va_start(va, a);
+	vsnprintf(msg, sizeof msg, a, va);
+	fprintf(stderr, "%s\n", msg);
+	perror("perror: ");
+
+	exit(1);
 }
 
