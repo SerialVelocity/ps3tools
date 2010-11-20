@@ -37,6 +37,7 @@ static struct {
 	u32 size;
 	u32 compressed;
 	u32 size_uncompressed;
+	u32 elf_offset;
 } self_sections[MAX_SECTIONS];
 
 static void read_header(void)
@@ -120,32 +121,32 @@ static void read_sections(void)
 	i = 0;
 	while (elf_offset < filesize) {
 		if (i == n_secs) {
-			printf("final: %08x -> %08x\n", elf_offset, filesize);
 			self_sections[j].offset = self_offset;
 			self_sections[j].size = filesize - elf_offset;
 			self_sections[j].compressed = 0;
 			self_sections[j].size_uncompressed = filesize - elf_offset;
+			self_sections[j].elf_offset = elf_offset;
 			elf_offset = filesize;
 		} else if (self_offset == s[i].offset) {
-			printf("compressed: %08x (size: %08x)\n", self_offset, s[i].size);
 			self_sections[j].offset = self_offset;
 			self_sections[j].size = s[i].size;
 			self_sections[j].compressed = 1;
 			elf_read_phdr(arch64, elf + phdr_offset +
 					(ehdr.e_phentsize * s[i].idx), &p);
 			self_sections[j].size_uncompressed = p.p_filesz;
+			self_sections[j].elf_offset = p.p_off;
 
-			elf_offset += p.p_filesz;
-			self_offset += s[i].size;
+			elf_offset = p.p_off + p.p_filesz;
+			self_offset = s[i].next;
 			i++;
 		} else {
-			printf("gap: %08x -> %08x\n", self_offset, s[i].offset);
 			elf_read_phdr(arch64, elf + phdr_offset +
 					(ehdr.e_phentsize * s[i].idx), &p);
 			self_sections[j].offset = self_offset;
 			self_sections[j].size = p.p_off - elf_offset;
 			self_sections[j].compressed = 0;
 			self_sections[j].size_uncompressed = self_sections[j].size;
+			self_sections[j].elf_offset = elf_offset;
 
 			elf_offset += self_sections[j].size;
 			self_offset += s[i].offset - self_offset;
@@ -164,6 +165,8 @@ static void write_elf(void)
 	u32 offset = 0;
 
 	for (i = 0; i < n_sections; i++) {
+		fseek(out, self_sections[i].elf_offset, SEEK_SET);
+		offset = self_sections[i].elf_offset;
 		if (self_sections[i].compressed) {
 			size = self_sections[i].size_uncompressed;
 
@@ -171,7 +174,6 @@ static void write_elf(void)
 			if (bfr == NULL)
 				fail("failed to allocate %d bytes", size);
 
-			printf("[%08x %08x]*\n", offset, size);
 			offset += size;
 	
 			decompress(self + self_sections[i].offset,
@@ -182,7 +184,6 @@ static void write_elf(void)
 		} else {
 			bfr = self + self_sections[i].offset;
 			size = self_sections[i].size;
-			printf("[%08x %08x]\n", offset, size);
 			offset += size;
 	
 			fwrite(bfr, size, 1, out);
