@@ -21,24 +21,13 @@ void *mmap_file(const char *path)
 
 	fd = open(path, O_RDONLY);
 	if(fd == -1)
-	{
-		perror("open");
-		printf("trying to open '%s'\n", path);
-	}
+		fail("open %s", path);
 	if(fstat(fd, &st) != 0)
-	{
-		perror("fstat");
-		close(fd);
-		return NULL;
-	}
+		fail("fstat %s", path);
 
-	ptr = mmap(0, st.st_size, PROT_READ, MAP_SHARED, fd, 0);
+	ptr = mmap(0, st.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
 	if(ptr==NULL)
-	{
-		perror("mmap");
-		close(fd);
-		return NULL;
-	}
+		fail("mmap");
 	close(fd);
 
 	return ptr;

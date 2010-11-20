@@ -197,7 +197,6 @@ int main(int argc, char *argv[])
 		fail("usage: unself in.self out.elf");
 
 	self = mmap_file(argv[1]);
-	out = fopen(argv[2], "w");
 
 	read_header();
 	read_sections();
@@ -206,6 +205,7 @@ int main(int argc, char *argv[])
 		fail("Only non-encrypted fselfs are supported. (type: %x)",
 		     sdk_type);
 
+	out = fopen(argv[2], "w");
 	write_elf();
 	fclose(out);
 
