@@ -18,6 +18,8 @@ void elf_read_shdr(int arch64, u8 *shdr, struct elf_shdr *s);
 
 void fail(const char *fmt, ...);
 
+void decompress(u8 *in, u64 in_len, u8 *out, u64 out_len);
+
 #define		round_up(x,n)	(-(-(x) & -(n)))
 
 #define		array_size(x)	(sizeof(x) / sizeof(*(x)))

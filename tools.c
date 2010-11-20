@@ -9,6 +9,7 @@
 #include <string.h>
 #include <stdarg.h>
 #include <stdlib.h>
+#include <zlib.h>
 
 #include "tools.h"
 
@@ -160,3 +161,33 @@ void fail(const char *a, ...)
 	exit(1);
 }
 
+void decompress(u8 *in, u64 in_len, u8 *out, u64 out_len)
+{
+	z_stream s;
+	int ret;
+
+	memset(&s, 0, sizeof(s));
+
+	s.zalloc = Z_NULL;
+	s.zfree = Z_NULL;
+	s.opaque = Z_NULL;
+
+	ret = inflateInit(&s);
+	if (ret != Z_OK)
+		fail("inflateInit returned %d", ret);
+
+	s.avail_in = in_len;
+	s.next_in = in;
+
+	s.avail_out = out_len;
+	s.next_out = out;
+
+	ret = inflate(&s, Z_FINISH);
+	if (s.total_out != out_len)
+		fail("inflate: requested %08x bytes but got %08x",
+			out_len, s.total_out);
+	if (ret != Z_OK && ret != Z_STREAM_END)
+		fail("inflate returned %d", ret);
+
+	inflateEnd(&s);
+}
