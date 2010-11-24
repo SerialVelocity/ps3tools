@@ -64,6 +64,21 @@ struct elf_hdr {
 };
 
 
+struct id2name_tbl {
+	u32 id;
+	const char *name;
+};
+
+struct key {
+	u8 key[32];
+	u8 iv[16];
+};
+
+struct keylist {
+	u32 n;
+	struct key *keys;
+};
+
 static inline u8 be8(u8 *p)
 {
 	return *p;

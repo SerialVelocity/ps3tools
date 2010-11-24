@@ -10,6 +10,7 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 #include "tools.h"
 
 static u8 *self;
@@ -34,22 +35,7 @@ static u64 ver_info;
 static u64 ctrl_offset;
 static u64 ctrl_size;
 
-
-
-struct id2name_tbl {
-	u32 id;
-	const char *name;
-};
-
-static const char *id2name(u32 id, struct id2name_tbl *t, const char *unk)
-{
-	while (t->name != NULL) {
-		if (id == t->id)
-			return t->name;
-		t++;
-	}
-	return unk;
-}
+static int decrypted = -1;
 
 struct id2name_tbl t_sdk_type[] = {
 	{0, "Retail (Type 0)"},
@@ -148,6 +134,53 @@ static void parse_self(void)
 
 	elf = self + elf_offset;
 	arch64 = elf_read_hdr(elf, &ehdr);
+}
+
+
+static struct keylist *self_load_keys(void)
+{
+	enum sce_key id;
+
+	switch (app_type) {
+		case 1:
+			id = KEY_LV0;
+			break;
+	 	case 2:
+			id = KEY_LV1;
+			break;
+		case 3:
+			id = KEY_LV2;
+			break;
+		case 4:	
+			id = KEY_APP;
+			break;
+		case 5:
+			id = KEY_ISO;
+			break;
+		case 6:
+			id = KEY_LDR;
+			break;
+		case 8:
+			return NULL;
+			break;
+		default:
+			fail("invalid type: %08x", app_type);	
+	}
+
+	return keys_get(id);
+}
+
+static void decrypt_header(void)
+{
+	struct keylist *klist;
+
+	klist = self_load_keys();
+	if (klist == NULL)
+		return;
+
+	decrypted = sce_decrypt_header(self, klist);
+	free(klist->keys);
+	free(klist);
 }
 
 
@@ -286,6 +319,70 @@ static void show_sinfo(void)
 	}
 
 	printf("\n");
+}
+
+static void show_meta(void)
+{
+	u32 meta_len;
+	u32 meta_n_hdr;
+	u32 meta_n_keys;
+	u32 i;
+	u64 offset, size;
+	u8 *tmp;
+
+	printf("Encrypted Metadata\n");
+
+	if (sdk_type == 0x8000) {
+		printf("  no encrypted metadata in fselfs.\n\n");
+		return;
+	}
+
+	if (decrypted < 0) {
+		printf("  unable to decrypt metadata\n\n");
+		return;
+	}
+
+	meta_len = be32(self + meta_offset + 0x60 + 0x4);
+	meta_n_hdr = be32(self + meta_offset + 0x60 + 0xc);
+	meta_n_keys = be32(self + meta_offset + 0x60 + 0x10);
+
+	printf("  Key:            ");
+	print_hash(self + meta_offset + 0x20, 0x10);
+	printf("\n");
+
+	printf("  IV :            ");
+	print_hash(self + meta_offset + 0x40, 0x10);
+	printf("\n");
+
+	printf("  Length          %08x\n", meta_len);
+	printf("  Sections        %d\n", meta_n_hdr);
+	printf("  Keys            %d\n", meta_n_keys);
+	printf("\n");
+
+	printf("  Sections\n");
+	printf("    Offset            Length            Key IV  SHA1\n");
+	for (i = 0; i < meta_n_hdr; i++) {
+		tmp = self + meta_offset + 0x80 + 0x30*i;
+		offset = be64(tmp);
+		size = be64(tmp + 8);
+		printf("    %08x_%08x %08x_%08x %03d %03d %03d\n",
+		       (u32)(offset >> 32), (u32)offset, (u32)(size >> 32), (u32)size,
+		       be32(tmp + 0x24), be32(tmp + 0x28), be32(tmp + 0x1c));
+	}
+	printf("\n");
+
+	printf("  Keys\n");
+	printf("    Idx  Data\n");
+	tmp = self + meta_offset + 0x80 + 0x30*meta_n_hdr;
+	for (i = 0; i < meta_n_keys; i++) {
+		printf("    %03d ", i);
+		print_hash(tmp + i*0x10, 0x10);
+		printf("\n");
+	}
+	printf("\n");
+
+	printf("\n");
+
 }
 
 static void show_elf_header(void)
@@ -471,10 +568,12 @@ int main(int argc, char *argv[])
 	self = mmap_file(argv[1]);
 
 	parse_self();
+	decrypt_header();
 
 	show_self_header();
 	show_ctrl();
 	show_sinfo();
+	show_meta();
 	show_elf_header();
 	show_phdrs();
 	show_shdrs();

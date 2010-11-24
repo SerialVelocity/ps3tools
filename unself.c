@@ -17,7 +17,7 @@ static u8 *elf = NULL;
 static FILE *out = NULL;
 
 static u64 info_offset;
-static u32 sdk_type;
+static u32 key_ver;
 static u64 phdr_offset;
 static u64 shdr_offset;
 static u64 sec_offset;
@@ -32,6 +32,8 @@ static u32 n_sections;
 
 static struct elf_hdr ehdr;
 
+static u32 app_type;
+
 static struct {
 	u32 offset;
 	u32 size;
@@ -42,7 +44,7 @@ static struct {
 
 static void read_header(void)
 {
-	sdk_type =    be16(self + 0x08);
+	key_ver =    be16(self + 0x08);
 	meta_offset = be32(self + 0x0c);
 	header_len =  be64(self + 0x10);
 	filesize =    be64(self + 0x18);
@@ -54,6 +56,7 @@ static void read_header(void)
 	ver_offset =  be64(self + 0x50);
 
 	version =   be64(self + info_offset + 0x10);
+	app_type =    be32(self + info_offset + 0x0c);
 
 	elf = self + elf_offset;
 	arch64 = elf_read_hdr(elf, &ehdr);
@@ -167,7 +170,9 @@ static void write_elf(void)
 	for (i = 0; i < n_sections; i++) {
 		fseek(out, self_sections[i].elf_offset, SEEK_SET);
 		offset = self_sections[i].elf_offset;
+		printf("seeking to %08x\n", offset);
 		if (self_sections[i].compressed) {
+			printf("decompress!\n");
 			size = self_sections[i].size_uncompressed;
 
 			bfr = malloc(size);
@@ -191,6 +196,51 @@ static void write_elf(void)
 	}
 }
 
+static struct keylist *self_load_keys(void)
+{
+	enum sce_key id;
+
+	switch (app_type) {
+		case 1:
+			id = KEY_LV0;
+			break;
+	 	case 2:
+			id = KEY_LV1;
+			break;
+		case 3:
+			id = KEY_LV2;
+			break;
+		case 4:	
+			id = KEY_APP;
+			break;
+		case 5:
+			id = KEY_ISO;
+			break;
+		case 6:
+			id = KEY_LDR;
+			break;
+		default:
+			fail("invalid type: %08x", app_type);	
+	}
+
+	return keys_get(id);
+}
+
+static void self_decrypt(void)
+{
+	struct keylist *klist;
+
+	klist = self_load_keys();
+	if (klist == NULL)
+		fail("no key found");
+
+	if (sce_decrypt_header(self, klist) < 0)
+		fail("self_decrypt_header failed");
+
+	if (sce_decrypt_data(self) < 0)
+		fail("self_decrypt_data failed");
+}
+
 int main(int argc, char *argv[])
 {
 	if (argc != 3)
@@ -201,9 +251,8 @@ int main(int argc, char *argv[])
 	read_header();
 	read_sections();
 
-	if (sdk_type != 0x8000)
-		fail("Only non-encrypted fselfs are supported. (type: %x)",
-		     sdk_type);
+	if (key_ver != 0x8000)
+		self_decrypt();
 
 	out = fopen(argv[2], "w");
 	write_elf();
