@@ -1,4 +1,4 @@
-TOOLS	=	readself pupunpack unself
+TOOLS	=	readself pupunpack unself unpkg
 COMMON	=	tools.o aes.o
 DEPS	=	Makefile tools.h types.h
 

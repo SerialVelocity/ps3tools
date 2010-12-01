@@ -82,9 +82,6 @@ void decompress(u8 *in, u64 in_len, u8 *out, u64 out_len)
 	s.next_out = out;
 
 	ret = inflate(&s, Z_FINISH);
-	if (s.total_out != out_len)
-		fail("inflate: requested %08x bytes but got %08x (ret: %d)",
-			out_len, s.total_out, ret);
 	if (ret != Z_OK && ret != Z_STREAM_END)
 		fail("inflate returned %d", ret);
 
