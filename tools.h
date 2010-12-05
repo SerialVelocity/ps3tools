@@ -16,7 +16,8 @@ enum sce_key {
 	KEY_APP,
 	KEY_ISO,
 	KEY_LDR,
-	KEY_PKG
+	KEY_PKG,
+	KEY_SPP
 };
 
 void *mmap_file(const char *path);
@@ -28,6 +29,7 @@ void decompress(u8 *in, u64 in_len, u8 *out, u64 out_len);
 int elf_read_hdr(u8 *hdr, struct elf_hdr *h);
 void elf_read_phdr(int arch64, u8 *phdr, struct elf_phdr *p);
 void elf_read_shdr(int arch64, u8 *shdr, struct elf_shdr *s);
+void elf_write_shdr(int arch64, u8 *shdr, struct elf_shdr *s);
 
 void aes256cbc(u8 *key, u8 *iv, u8 *in, u64 len, u8 *out);
 void aes128ctr(u8 *key, u8 *iv, u8 *in, u64 len, u8 *out);

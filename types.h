@@ -116,6 +116,12 @@ static inline u64 be64(u8 *p)
 	return ((u64)a<<32) | b;
 }
 
+static inline void wbe16(u8 *p, u16 v)
+{
+	p[0] = v >>  8;
+	p[1] = v;
+}
+
 static inline void wbe32(u8 *p, u32 v)
 {
 	p[0] = v >> 24;

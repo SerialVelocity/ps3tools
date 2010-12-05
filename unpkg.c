@@ -131,7 +131,7 @@ static void parse_pkg(void)
 	else if (be32(pkg) == 1)
 		parse_pkg_1();
 	else
-		fail("unknown pkg type");
+		fail("unknown pkg type: %08x", be32(pkg));
 }
 
 int main(int argc, char *argv[])

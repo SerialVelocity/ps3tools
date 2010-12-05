@@ -170,9 +170,7 @@ static void write_elf(void)
 	for (i = 0; i < n_sections; i++) {
 		fseek(out, self_sections[i].elf_offset, SEEK_SET);
 		offset = self_sections[i].elf_offset;
-		printf("seeking to %08x\n", offset);
 		if (self_sections[i].compressed) {
-			printf("decompress!\n");
 			size = self_sections[i].size_uncompressed;
 
 			bfr = malloc(size);
@@ -193,6 +191,109 @@ static void write_elf(void)
 	
 			fwrite(bfr, size, 1, out);
 		}
+	}
+}
+
+static void remove_shnames(u64 shdr_offset, u16 n_shdr, u64 shstrtab_offset, u32 strtab_size)
+{
+	u16 i;
+	u32 size;
+	struct elf_shdr s;
+
+	if (arch64)
+		size = 0x40;
+	else
+		size = 0x28;
+
+	for (i = 0; i < n_shdr; i++) {
+		elf_read_shdr(arch64, elf + shdr_offset + i * size, &s);
+
+		s.sh_name = 0;
+		if (s.sh_type == 3) {
+			s.sh_offset = shstrtab_offset;
+			s.sh_size = strtab_size;
+		}
+
+		elf_write_shdr(arch64, elf + shdr_offset + i * size, &s);
+	}
+}
+
+static void check_elf(void)
+{
+	u8 bfr[0x48];
+	u64 elf_offset;
+	u64 phdr_offset;
+	u64 shdr_offset;
+	u64 phdr_offset_new;
+	u64 shdr_offset_new;
+	u64 shstrtab_offset;
+	u16 n_phdr;
+	u16 n_shdr;
+	const char *shstrtab = ".unknown\0\0";
+
+	fseek(out, 0, SEEK_SET);
+	fread(bfr, 4, 1, out);
+
+	if (memcmp(bfr, "\7fELF", 4) == 0)
+		return;
+
+	elf_offset =  be64(self + 0x30);
+	phdr_offset = be64(self + 0x38) - elf_offset;
+	shdr_offset = be64(self + 0x40) - elf_offset;
+
+	if (arch64) {
+		fseek(out, 0x48, SEEK_SET);
+		phdr_offset_new = 0x48;
+
+		fseek(out, 0, SEEK_END);
+		shdr_offset_new = ftell(out);
+
+		n_phdr = be16(elf + 0x38);
+		n_shdr = be16(elf + 0x3c);
+		shstrtab_offset = shdr_offset_new + n_shdr * 0x40;
+
+		remove_shnames(shdr_offset, n_shdr, shstrtab_offset, sizeof shstrtab);
+
+		fseek(out, phdr_offset_new, SEEK_SET);
+		fwrite(elf + phdr_offset, 0x38, n_phdr, out);
+
+		fseek(out, shdr_offset_new, SEEK_SET);
+		fwrite(elf + shdr_offset, 0x40, n_shdr, out);
+
+		wbe64(elf + 0x20, phdr_offset_new);
+		wbe64(elf + 0x28, shdr_offset_new);
+
+		fseek(out, SEEK_SET, 0);
+		fwrite(elf, 0x48, 1, out);
+
+		fseek(out, shstrtab_offset, SEEK_SET);
+		fwrite(shstrtab, sizeof shstrtab, 1, out);
+	} else {
+		fseek(out, 0x34, SEEK_SET);
+		phdr_offset_new = 0x34;
+		fseek(out, 0, SEEK_END);
+		shdr_offset_new = ftell(out);
+
+		n_phdr = be16(elf + 0x2c);
+		n_shdr = be16(elf + 0x30);
+		shstrtab_offset = shdr_offset_new + n_shdr * 0x40;
+
+		remove_shnames(shdr_offset, n_shdr, shstrtab_offset, sizeof shstrtab);
+	
+		fseek(out, phdr_offset_new, SEEK_SET);
+		fwrite(elf + phdr_offset, 0x20, n_phdr, out);
+
+		fseek(out, shdr_offset_new, SEEK_SET);
+		fwrite(elf + shdr_offset, 0x28, n_shdr, out);
+
+		wbe32(elf + 0x1c, phdr_offset_new);
+		wbe32(elf + 0x20, shdr_offset_new);
+
+		fseek(out, SEEK_SET, 0);
+		fwrite(elf, 0x34, 1, out);
+
+		fseek(out, shstrtab_offset, SEEK_SET);
+		fwrite(shstrtab, sizeof shstrtab, 1, out);
 	}
 }
 
@@ -255,7 +356,10 @@ int main(int argc, char *argv[])
 		self_decrypt();
 
 	out = fopen(argv[2], "w");
+
 	write_elf();
+	check_elf();
+
 	fclose(out);
 
 	return 0;

@@ -196,6 +196,33 @@ void elf_read_shdr(int arch64, u8 *shdr, struct elf_shdr *s)
 	}
 }
 
+void elf_write_shdr(int arch64, u8 *shdr, struct elf_shdr *s)
+{
+	if (arch64) {
+		wbe32(shdr + 0*4, s->sh_name);
+		wbe32(shdr + 1*4, s->sh_type);
+		wbe64(shdr + 2*4, s->sh_flags);
+		wbe64(shdr + 2*4 + 1*8, s->sh_addr);
+		wbe64(shdr + 2*4 + 2*8, s->sh_offset);
+		wbe64(shdr + 2*4 + 3*8, s->sh_size);
+		wbe32(shdr + 2*4 + 4*8, s->sh_link);
+		wbe32(shdr + 3*4 + 4*8, s->sh_info);
+		wbe64(shdr + 4*4 + 4*8, s->sh_addralign);
+		wbe64(shdr + 4*4 + 5*8, s->sh_entsize);
+	} else {
+		wbe32(shdr + 0*4, s->sh_name);
+		wbe32(shdr + 1*4, s->sh_type);
+		wbe32(shdr + 2*4, s->sh_flags);
+		wbe32(shdr + 3*4, s->sh_addr);
+		wbe32(shdr + 4*4, s->sh_offset);
+		wbe32(shdr + 5*4, s->sh_size);
+		wbe32(shdr + 6*4, s->sh_link);
+		wbe32(shdr + 7*4, s->sh_info);
+		wbe32(shdr + 8*4, s->sh_addralign);
+		wbe32(shdr + 9*4, s->sh_entsize);
+	}
+}
+
 //
 // crypto
 //
@@ -258,6 +285,7 @@ static struct id2name_tbl t_key2file[] = {
 	{KEY_ISO, "iso"},
 	{KEY_LDR, "ldr"},
 	{KEY_PKG, "pkg"},
+	{KEY_SPP, "spp"},
 	{0, NULL}
 };
 
@@ -417,11 +445,6 @@ int sce_decrypt_header(u8 *ptr, struct keylist *klist)
 	return 0;
 }
 
-static void print_hash(u8 *ptr, u32 len)
-{
-	while(len--)
-		printf(" %02x", *ptr++);
-}
 int sce_decrypt_data(u8 *ptr)
 {
 	u64 meta_offset;
