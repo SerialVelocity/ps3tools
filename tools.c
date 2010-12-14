@@ -14,6 +14,7 @@
 
 #include "tools.h"
 #include "aes.h"
+#include "sha1.h"
 
 //
 // misc
@@ -276,6 +277,55 @@ void aes128ctr(u8 *key, u8 *nonce, u8 *in, u64 len, u8 *out)
 		*out++ = *in++ ^ ctr[i & 0x0f];
 	}
 }
+
+
+// FIXME: use a non-broken sha1.c *sigh*
+static void sha1_fixup(struct SHA1Context *ctx, u8 *digest)
+{
+	u32 i;
+
+	for(i = 0; i < 5; i++) {
+		*digest++ = ctx->Message_Digest[i] >> 24 & 0xff;
+		*digest++ = ctx->Message_Digest[i] >> 16 & 0xff;
+		*digest++ = ctx->Message_Digest[i] >> 8 & 0xff;
+		*digest++ = ctx->Message_Digest[i] & 0xff;
+	}
+}
+
+void sha1(u8 *data, u32 len, u8 *digest)
+{
+	struct SHA1Context ctx;
+
+	SHA1Reset(&ctx);
+	SHA1Input(&ctx, data, len);
+	SHA1Result(&ctx);
+
+	sha1_fixup(&ctx, digest);
+}
+
+void sha1_hmac(u8 *key, u8 *data, u32 len, u8 *digest)
+{
+	struct SHA1Context ctx;
+	u32 i;
+	u8 ipad[0x40];
+	u8 tmp[0x40 + 0x14]; // opad + hash(ipad + message)
+
+	SHA1Reset(&ctx);
+
+	for (i = 0; i < sizeof ipad; i++) {
+		tmp[i] = key[i] ^ 0x5c; // opad
+		ipad[i] = key[i] ^ 0x36;
+	}
+
+	SHA1Input(&ctx, ipad, sizeof ipad);
+	SHA1Input(&ctx, data, len);
+	SHA1Result(&ctx);
+
+	sha1_fixup(&ctx, tmp + 0x40);
+
+	sha1(tmp, sizeof tmp, digest);
+
+}
 	
 static struct id2name_tbl t_key2file[] = {
 	{KEY_LV0, "lv0"},
@@ -332,12 +382,13 @@ struct keylist *keys_get(enum sce_key type)
 {
 	const char *name = NULL;
 	char base[256];
-	struct keylist *klist;
+	char path[256];
+	void *tmp = NULL;
+	char *id;
 	DIR *dp;
 	struct dirent *dent;
-	void *tmp = NULL;
-	char path[256];
-	char *id;
+	struct keylist *klist;
+	u8 bfr[4];
 
 	klist = malloc(sizeof *klist);
 	if (klist == NULL)
@@ -368,11 +419,31 @@ struct keylist *keys_get(enum sce_key type)
 				id++;
 
 			klist->keys = tmp;
+			memset(&klist->keys[klist->n], 0, sizeof(struct key));
+
 			snprintf(path, sizeof path, "%s/%s-key-%s", base, name, id);
 			key_read(path, 32, klist->keys[klist->n].key);
 	
 			snprintf(path, sizeof path, "%s/%s-iv-%s", base, name, id);
 			key_read(path, 16, klist->keys[klist->n].iv);
+	
+			klist->keys[klist->n].pub_avail = -1;
+			klist->keys[klist->n].priv_avail = -1;
+
+			snprintf(path, sizeof path, "%s/%s-pub-%s", base, name, id);
+			if (key_read(path, 40, klist->keys[klist->n].pub) == 0) {
+
+				snprintf(path, sizeof path, "%s/%s-ctype-%s", base, name, id);
+				key_read(path, 4, bfr);
+
+				klist->keys[klist->n].pub_avail = 1;
+				klist->keys[klist->n].ctype = be32(bfr);
+			}
+
+			snprintf(path, sizeof path, "%s/%s-priv-%s", base, name, id);
+			if (key_read(path, 20, klist->keys[klist->n].priv) == 0)
+				klist->keys[klist->n].priv_avail = 1;
+
 
 			klist->n++;
 		}
@@ -389,6 +460,35 @@ fail:
 	klist = NULL;
 
 	return NULL;
+}
+
+int ecdsa_get_params(u32 type, u8 *p, u8 *a, u8 *b, u8 *N, u8 *Gx, u8 *Gy)
+{
+	static u8 tbl[64 * 121];
+	char path[256];
+	u32 offset;
+
+	if (type >= 64)
+		return -1;
+
+	if (key_build_path(path) < 0)
+		return -1;
+
+	strncat(path, "/curves", sizeof path);
+
+	if (key_read(path, sizeof tbl, tbl) < 0)
+		return -1;
+
+	offset = type * 121;
+
+	memcpy(p, tbl + offset + 0, 20);
+	memcpy(a, tbl + offset + 20, 20);
+	memcpy(b, tbl + offset + 40, 20);
+	memcpy(N, tbl + offset + 60, 20);
+	memcpy(Gx, tbl + offset + 81, 20);
+	memcpy(Gy, tbl + offset + 101, 20);
+
+	return 0;
 }
 
 int sce_decrypt_header(u8 *ptr, struct keylist *klist)
@@ -442,7 +542,8 @@ int sce_decrypt_header(u8 *ptr, struct keylist *klist)
 		  ptr + meta_offset + 0x80,
 		  meta_len - 0x80,
 		  ptr + meta_offset + 0x80);
-	return 0;
+
+	return i;
 }
 
 int sce_decrypt_data(u8 *ptr)

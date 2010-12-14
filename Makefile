@@ -1,9 +1,9 @@
-TOOLS	=	readself pupunpack unself unpkg
-COMMON	=	tools.o aes.o
+TOOLS	=	readself pupunpack unself unpkg sceverify
+COMMON	=	tools.o aes.o sha1.o
 DEPS	=	Makefile tools.h types.h
 
 CC	=	gcc
-CFLAGS	=	-g -O0 -Wall -W -Wextra
+CFLAGS	=	-g -O0 -Wall -W
 LDFLAGS =	-lz
 
 OBJS	= $(COMMON) $(addsuffix .o, $(TOOLS))

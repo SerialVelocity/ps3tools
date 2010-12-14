@@ -72,6 +72,12 @@ struct id2name_tbl {
 struct key {
 	u8 key[32];
 	u8 iv[16];
+
+	int pub_avail;
+	int priv_avail;
+	u8 pub[40];
+	u8 priv[20];
+	u32 ctype;
 };
 
 struct keylist {

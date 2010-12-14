@@ -33,8 +33,11 @@ void elf_write_shdr(int arch64, u8 *shdr, struct elf_shdr *s);
 
 void aes256cbc(u8 *key, u8 *iv, u8 *in, u64 len, u8 *out);
 void aes128ctr(u8 *key, u8 *iv, u8 *in, u64 len, u8 *out);
+void sha1(u8 *data, u32 len, u8 *digest);
+void sha1_hmac(u8 *key, u8 *data, u32 len, u8 *digest);
 
 struct keylist *keys_get(enum sce_key type);
+int ecdsa_get_params(u32 type, u8 *p, u8 *a, u8 *b, u8 *N, u8 *Gx, u8 *Gy);
 
 int sce_decrypt_header(u8 *ptr, struct keylist *klist);
 int sce_decrypt_data(u8 *ptr);
