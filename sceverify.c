@@ -29,6 +29,7 @@ static u8 b[20];
 static u8 N[21];
 static u8 Gx[20];
 static u8 Gy[20];
+static u8 Q[40];
 
 static struct keylist *self_load_keys(void)
 {
@@ -100,6 +101,8 @@ static void decrypt(void)
 
 	if (ecdsa_get_params(klist->keys[keyid].ctype, p, a, b, N, Gx, Gy) < 0)
 		fail("ecdsa_get_params() failed");
+
+	memcpy(Q, klist->keys[keyid].pub, 40);
 }
 
 static void hdmp(const char *n, u8 *p, u32 l)
