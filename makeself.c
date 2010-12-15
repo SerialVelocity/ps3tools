@@ -96,7 +96,7 @@ static void parse_elf(void)
 	arch64 = elf_read_hdr(elf, &ehdr);
 
 	for (i = 0; i < ehdr.e_phnum; i++)
-		elf_read_phdr(arch64, elf + ehdr.e_phoff + i * ehdr.e_ehsize, &phdr[i]);
+		elf_read_phdr(arch64, elf + ehdr.e_phoff + i * ehdr.e_phentsize, &phdr[i]);
 }
 
 static void build_sce_hdr(void)
@@ -182,7 +182,7 @@ static void build_sec_hdr(void)
 		wbe32(ptr + 0x18, 0);		// unknown
 
 		if (phdr[i].p_type == 1) 
-			wbe32(ptr + 0x1c, 2);	// encrypted LOAD phdr
+			wbe32(ptr + 0x1c, 1);	// encrypted LOAD phdr
 		else
 			wbe32(ptr + 0x1c, 0);	// no loadable phdr
 	}
