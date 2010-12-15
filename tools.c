@@ -252,7 +252,29 @@ void aes256cbc(u8 *key, u8 *iv, u8 *in, u64 len, u8 *out)
 	}
 }
 
-void aes128ctr(u8 *key, u8 *nonce, u8 *in, u64 len, u8 *out)
+void aes256cbc_enc(u8 *key, u8 *iv, u8 *in, u64 len, u8 *out)
+{
+	AES_KEY k;
+	u32 i;
+	u8 tmp[16];
+
+	memcpy(tmp, iv, 16);
+	memset(&k, 0, sizeof k);
+	AES_set_encrypt_key(key, 256, &k);
+
+	while (len > 0) {
+		for (i = 0; i < 16; i++)
+			tmp[i] ^= *in++;
+
+		AES_encrypt(tmp, out, &k);
+		memcpy(tmp, out, 16);
+
+		out += 16;
+		len -= 16;
+	}
+}
+
+void aes128ctr(u8 *key, u8 *iv, u8 *in, u64 len, u8 *out)
 {
 	AES_KEY k;
 	u32 i;
@@ -266,13 +288,13 @@ void aes128ctr(u8 *key, u8 *nonce, u8 *in, u64 len, u8 *out)
 
 	for (i = 0; i < len; i++) {
 		if ((i & 0xf) == 0) {
-			AES_encrypt(nonce, ctr, &k);
+			AES_encrypt(iv, ctr, &k);
 	
 			// increase nonce
-			tmp = be64(nonce + 8) + 1;
-			wbe64(nonce + 8, tmp);
+			tmp = be64(iv + 8) + 1;
+			wbe64(iv + 8, tmp);
 			if (tmp == 0)
-				wbe64(nonce, be64(nonce) + 1);
+				wbe64(iv, be64(iv) + 1);
 		}
 		*out++ = *in++ ^ ctr[i & 0x0f];
 	}
@@ -462,6 +484,49 @@ fail:
 	return NULL;
 }
 
+int key_get(enum sce_key type, const char *suffix, struct key *k)
+{
+	const char *name;
+	char base[256];
+	char path[256];
+	u8 tmp[4];
+
+	if (key_build_path(base) < 0)
+		return -1;
+
+	name = id2name(type, t_key2file, NULL);
+	if (name == NULL)
+		return -1;
+
+	snprintf(path, sizeof path, "%s/%s-key-%s", base, name, suffix);
+	if (key_read(path, 32, k->key) < 0)
+		return -1;
+	
+	snprintf(path, sizeof path, "%s/%s-iv-%s", base, name, suffix);
+	if (key_read(path, 16, k->iv) < 0)
+		return -1;
+
+	k->pub_avail = k->priv_avail = 1;
+
+	snprintf(path, sizeof path, "%s/%s-ctype-%s", base, name, suffix);
+	if (key_read(path, 4, tmp) < 0) { 
+		k->pub_avail = k->priv_avail = -1;
+		return 0;
+	}
+
+	k->ctype = be32(tmp);
+
+	snprintf(path, sizeof path, "%s/%s-pub-%s", base, name, suffix);
+	if (key_read(path, 40, k->pub) < 0)
+		k->pub_avail = -1;
+
+	snprintf(path, sizeof path, "%s/%s-priv-%s", base, name, suffix);
+	if (key_read(path, 20, k->priv) < 0)
+		k->priv_avail = -1;
+
+	return 0;
+}	
+
 int ecdsa_get_params(u32 type, u8 *p, u8 *a, u8 *b, u8 *N, u8 *Gx, u8 *Gy)
 {
 	static u8 tbl[64 * 121];
@@ -529,8 +594,9 @@ int sce_decrypt_header(u8 *ptr, struct keylist *klist)
 	if (success != 1)
 		return -1;
 
+	memcpy(tmp, ptr + meta_offset + 0x40, 0x10);
 	aes128ctr(ptr + meta_offset + 0x20,
-		  ptr + meta_offset + 0x40,
+		  tmp,
 		  ptr + meta_offset + 0x60,
 		  0x20,
 		  ptr + meta_offset + 0x60);
@@ -538,12 +604,39 @@ int sce_decrypt_header(u8 *ptr, struct keylist *klist)
 	meta_len = header_len - meta_offset;
 
 	aes128ctr(ptr + meta_offset + 0x20,
-		  ptr + meta_offset + 0x40,
+		  tmp,
 		  ptr + meta_offset + 0x80,
 		  meta_len - 0x80,
 		  ptr + meta_offset + 0x80);
 
 	return i;
+}
+
+int sce_encrypt_header(u8 *ptr, struct key *k)
+{
+	u32 meta_offset;
+	u32 meta_len;
+	u64 header_len;
+	u8 iv[16];
+
+	meta_offset = be32(ptr + 0x0c);
+	header_len  = be64(ptr + 0x10);
+	meta_len = header_len - meta_offset;
+
+	memcpy(iv, ptr + meta_offset + 0x40, 0x10);
+	aes128ctr(ptr + meta_offset + 0x20,
+		  iv,
+		  ptr + meta_offset + 0x60,
+		  meta_len - 0x60,
+		  ptr + meta_offset + 0x60);
+
+	aes256cbc_enc(k->key, k->iv,
+	              ptr + meta_offset + 0x20,
+		      0x40,
+		      ptr + meta_offset + 0x20);
+
+
+	return 0;
 }
 
 int sce_decrypt_data(u8 *ptr)
@@ -557,8 +650,10 @@ int sce_decrypt_data(u8 *ptr)
 	u64 offset;
 	u64 size;
 	u32 keyid;
-	u32 nonceid;
+	u32 ivid;
 	u8 *tmp;
+
+	u8 iv[16];
 
 	meta_offset = be32(ptr + 0x0c);
 	header_len  = be64(ptr + 0x10);
@@ -570,17 +665,23 @@ int sce_decrypt_data(u8 *ptr)
 		offset = be64(tmp);
 		size = be64(tmp + 8);
 		keyid = be32(tmp + 0x24);
-		nonceid = be32(tmp + 0x28);
+		ivid = be32(tmp + 0x28);
 
-		if (keyid == 0xffffffff || nonceid == 0xffffffff)
+		if (keyid == 0xffffffff || ivid == 0xffffffff)
 			continue;
 
+		memcpy(iv, ptr + meta_offset + 0x80 + 0x30 * meta_n_hdr + ivid * 0x10, 0x10);
 		aes128ctr(ptr + meta_offset + 0x80 + 0x30 * meta_n_hdr + keyid * 0x10,
-		          ptr + meta_offset + 0x80 + 0x30 * meta_n_hdr + nonceid * 0x10,
+		          iv,
  		          ptr + offset,
 			  size,
 			  ptr + offset);
 	}
 
 	return 0;
+}
+
+int sce_encrypt_data(u8 *ptr)
+{
+	return sce_decrypt_data(ptr);
 }

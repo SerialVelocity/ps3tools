@@ -23,7 +23,7 @@ enum sce_key {
 void *mmap_file(const char *path);
 void memcpy_to_file(const char *fname, u8 *ptr, u64 size);
 const char *id2name(u32 id, struct id2name_tbl *t, const char *unk);
-void fail(const char *fmt, ...);
+void fail(const char *fmt, ...) __attribute__((noreturn));
 void decompress(u8 *in, u64 in_len, u8 *out, u64 out_len);
 
 int elf_read_hdr(u8 *hdr, struct elf_hdr *h);
@@ -32,15 +32,20 @@ void elf_read_shdr(int arch64, u8 *shdr, struct elf_shdr *s);
 void elf_write_shdr(int arch64, u8 *shdr, struct elf_shdr *s);
 
 void aes256cbc(u8 *key, u8 *iv, u8 *in, u64 len, u8 *out);
+void aes256cbc_enc(u8 *key, u8 *iv, u8 *in, u64 len, u8 *out);
 void aes128ctr(u8 *key, u8 *iv, u8 *in, u64 len, u8 *out);
+
 void sha1(u8 *data, u32 len, u8 *digest);
 void sha1_hmac(u8 *key, u8 *data, u32 len, u8 *digest);
 
+int key_get(enum sce_key type, const char *suffix, struct key *k);
 struct keylist *keys_get(enum sce_key type);
 int ecdsa_get_params(u32 type, u8 *p, u8 *a, u8 *b, u8 *N, u8 *Gx, u8 *Gy);
 
 int sce_decrypt_header(u8 *ptr, struct keylist *klist);
+int sce_encrypt_header(u8 *ptr, struct key *k);
 int sce_decrypt_data(u8 *ptr);
+int sce_encrypt_data(u8 *ptr);
 
 #define		round_up(x,n)	(-(-(x) & -(n)))
 

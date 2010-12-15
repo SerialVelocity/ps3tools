@@ -22,7 +22,6 @@ static u64 header_len;
 
 static struct keylist *klist = NULL;
 
-
 static u8 p[20];
 static u8 a[20];
 static u8 b[20];

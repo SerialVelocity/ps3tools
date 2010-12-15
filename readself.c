@@ -346,15 +346,15 @@ static void show_meta(void)
 	meta_n_hdr = be32(self + meta_offset + 0x60 + 0xc);
 	meta_n_keys = be32(self + meta_offset + 0x60 + 0x10);
 
-	printf("  Key:            ");
+	printf("  Key:           ");
 	print_hash(self + meta_offset + 0x20, 0x10);
 	printf("\n");
 
-	printf("  IV :            ");
+	printf("  IV :           ");
 	print_hash(self + meta_offset + 0x40, 0x10);
 	printf("\n");
 
-	printf("  Length          %08x\n", meta_len);
+	printf("  Signature end   %08x\n", meta_len);
 	printf("  Sections        %d\n", meta_n_hdr);
 	printf("  Keys            %d\n", meta_n_keys);
 	printf("\n");
