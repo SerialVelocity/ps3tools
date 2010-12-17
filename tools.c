@@ -499,6 +499,21 @@ fail:
 	return NULL;
 }
 
+int key_get_simple(const char *name, u8 *bfr, u32 len)
+{
+	char base[256];
+	char path[256];
+
+	if (key_build_path(base) < 0)
+		return -1;
+
+	snprintf(path, sizeof path, "%s/%s", base, name);
+	if (key_read(path, len, bfr) < 0)
+		return -1;
+
+	return 0;
+}
+
 int key_get(enum sce_key type, const char *suffix, struct key *k)
 {
 	const char *name;

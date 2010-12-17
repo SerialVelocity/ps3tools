@@ -40,6 +40,7 @@ void sha1(u8 *data, u32 len, u8 *digest);
 void sha1_hmac(u8 *key, u8 *data, u32 len, u8 *digest);
 
 int key_get(enum sce_key type, const char *suffix, struct key *k);
+int key_get_simple(const char *name, u8 *bfr, u32 len);
 struct keylist *keys_get(enum sce_key type);
 
 int sce_decrypt_header(u8 *ptr, struct keylist *klist);
