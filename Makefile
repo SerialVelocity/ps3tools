@@ -1,6 +1,6 @@
 TOOLS	=	readself pupunpack unself unpkg sceverify
 TOOLS	+=	makeself
-COMMON	=	tools.o aes.o sha1.o
+COMMON	=	tools.o aes.o sha1.o ec.o
 DEPS	=	Makefile tools.h types.h
 
 CC	=	gcc

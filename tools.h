@@ -40,12 +40,18 @@ void sha1_hmac(u8 *key, u8 *data, u32 len, u8 *digest);
 
 int key_get(enum sce_key type, const char *suffix, struct key *k);
 struct keylist *keys_get(enum sce_key type);
-int ecdsa_get_params(u32 type, u8 *p, u8 *a, u8 *b, u8 *N, u8 *Gx, u8 *Gy);
 
 int sce_decrypt_header(u8 *ptr, struct keylist *klist);
 int sce_encrypt_header(u8 *ptr, struct key *k);
 int sce_decrypt_data(u8 *ptr);
 int sce_encrypt_data(u8 *ptr);
+
+int ecdsa_get_params(u32 type, u8 *p, u8 *a, u8 *b, u8 *N, u8 *Gx, u8 *Gy);
+int ecdsa_set_curve(u32 type);
+void ecdsa_set_pub(u8 *Q);
+void ecdsa_set_priv(u8 *k);
+int ecdsa_verify(u8 *hash, u8 *r, u8 *s);
+int ecdsa_sign(u8 *hash, u8 *r, u8 *s);
 
 #define		round_up(x,n)	(-(-(x) & -(n)))
 

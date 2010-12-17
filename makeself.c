@@ -44,14 +44,6 @@ static u64 ctrl_offset;
 
 struct key ks;
 
-static u8 p[20];
-static u8 a[20];
-static u8 b[20];
-static u8 N[21];
-static u8 Gx[20];
-static u8 Gy[20];
-static u8 Q[40];
-static u8 k[21];
 
 static void get_rand(u8 *bfr, u32 size)
 {
@@ -82,11 +74,11 @@ static void get_keys(const char *suffix)
 	if (ks.priv_avail < 0)
 		fail("no private key available");
 
-	if (ecdsa_get_params(ks.ctype, p, a, b, N, Gx, Gy) < 0)
-		fail("ecdsa_get_params() failed");
+	if (ecdsa_set_curve(ks.ctype) < 0)
+		fail("ecdsa_set_curve failed");
 
-	memcpy(Q, ks.pub, 40);
-	memcpy(k, ks.priv, 21);
+	ecdsa_set_pub(ks.pub);
+	ecdsa_set_priv(ks.priv);
 }
 
 static void parse_elf(void)
@@ -275,7 +267,8 @@ static void sign_hdr(void)
 
 	sha1(self, sig_len, hash);
 
-	// TODO :-)
+	if (ecdsa_sign(hash, r, s) < 0)
+		fail("ecdsa_sign failed");
 }
 
 static u64 get_filesize(const char *path)

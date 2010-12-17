@@ -22,14 +22,6 @@ static u64 header_len;
 
 static struct keylist *klist = NULL;
 
-static u8 p[20];
-static u8 a[20];
-static u8 b[20];
-static u8 N[21];
-static u8 Gx[20];
-static u8 Gy[20];
-static u8 Q[40];
-
 static struct keylist *self_load_keys(void)
 {
 	enum sce_key id;
@@ -98,10 +90,10 @@ static void decrypt(void)
 	if (klist->keys[keyid].pub_avail < 0)
 		fail("no public key available");
 
-	if (ecdsa_get_params(klist->keys[keyid].ctype, p, a, b, N, Gx, Gy) < 0)
-		fail("ecdsa_get_params() failed");
+	if (ecdsa_set_curve(klist->keys[keyid].ctype) < 0)
+		fail("ecdsa_set_curve failed");
 
-	memcpy(Q, klist->keys[keyid].pub, 40);
+	ecdsa_set_pub(klist->keys[keyid].pub);
 }
 
 static void hdmp(const char *n, u8 *p, u32 l)
@@ -129,7 +121,12 @@ static void verify_signature(void)
 	hdmp("S   ", s, 21);
 	hdmp("HASH", hash, 20);
 
-	// TODO :)
+	printf("Signature\n");
+	printf("  Status:");
+	if (ecdsa_verify(hash, r, s) < 0)
+		printf(" FAIL\n");
+	else
+		printf(" OK\n");
 
 	printf("\n");
 }
