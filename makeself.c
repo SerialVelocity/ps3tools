@@ -44,13 +44,6 @@ static u64 ctrl_offset;
 
 struct key ks;
 
-
-static void get_rand(u8 *bfr, u32 size)
-{
-	while (size--)
-		*bfr++ = 0xaa;
-}
-
 static void get_type(const char *p)
 {
 	if (strncmp(p, "lv2", 4) == 0)

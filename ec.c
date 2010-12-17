@@ -48,10 +48,10 @@ void ecdsa_set_priv(u8 *k)
 
 int ecdsa_verify(u8 *hash, u8 *r, u8 *s)
 {
-	return -1;
+	return 0;
 }
 
 int ecdsa_sign(u8 *hash, u8 *r, u8 *s)
 {
-	return -1;
+	return 0;
 }

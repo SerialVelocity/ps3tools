@@ -76,11 +76,6 @@ static void decompress_pkg(void *ptr)
 				fail("weird pkg: not only last section is compressed");
 			decompress(pkg + offset, size,
 			           ptr, dec_size); 
-		} else {
-	
-			memcpy(tmp, pkg + offset, size);
-			tmp += size;
-			dec_size -= size;
 		}
 	}
 }
@@ -103,7 +98,7 @@ static void parse_pkg_sce(void)
 
 	if (flags & 0x8000) {
 		pkg += hdr_len;
-		return parse_pkg_1();
+		return parse_pkg();
 	}
 
 	k = keys_get(KEY_PKG);
