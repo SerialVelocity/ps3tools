@@ -102,8 +102,16 @@ const char *id2name(u32 id, struct id2name_tbl *t, const char *unk)
 // TODO: use real random numbers here
 void get_rand(u8 *bfr, u32 size)
 {
-	while (size--)
-		*bfr++ = 0xaa;
+	FILE *fp;
+
+	fp = fopen("/dev/random", "r");
+	if (fp == NULL)
+		fail("unable to open random");
+
+	if (fread(bfr, size, 1, fp) != 1)
+		fail("unable to read random numbers");
+
+	fclose(fp);
 }
 
 //
