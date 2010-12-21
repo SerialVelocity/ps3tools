@@ -60,7 +60,9 @@ static void elt_square(u8 *d, u8 *a)
 
 static void elt_inv(u8 *d, u8 *a)
 {
-	bn_inv(d, a, ec_p, 20);
+	u8 s[20];
+	bn_inv(s, a, ec_p, 20);
+	elt_copy(d, s);
 }
 
 #if 0
@@ -95,10 +97,13 @@ static int point_is_zero(u8 *p)
 static void point_double(u8 *r, u8 *p)
 {
 	u8 s[20], t[20];
+	u8 pp[40];
 	u8 *px, *py, *rx, *ry;
 
-	px = p;
-	py = p + 20;
+	memcpy(pp, p, 40);
+
+	px = pp;
+	py = pp + 20;
 	rx = r;
 	ry = r + 20;
 
@@ -121,20 +126,24 @@ static void point_double(u8 *r, u8 *p)
 	elt_add(t, px, px);	// t = 2*px
 	elt_sub(rx, rx, t);	// rx = s*s - 2*px
 
-	elt_sub(t, rx, px);	// t = rx - px
-	elt_mul(ry, s, t);	// ry = s*(rx-px)
-	elt_add(ry, ry, py);	// ry = s*(rx-px) + py
+	elt_sub(t, px, rx);	// t = -(rx-px)
+	elt_mul(ry, s, t);	// ry = -s*(rx-px)
+	elt_sub(ry, ry, py);	// ry = -s*(rx-px) - py
 }
 
 static void point_add(u8 *r, u8 *p, u8 *q)
 {
 	u8 s[20], t[20], u[20];
 	u8 *px, *py, *qx, *qy, *rx, *ry;
+	u8 pp[40], qq[40];
 
-	px = p;
-	py = p + 20;
-	qx = q;
-	qy = q + 20;
+	memcpy(pp, p, 40);
+	memcpy(qq, q, 40);
+
+	px = pp;
+	py = pp + 20;
+	qx = qq;
+	qy = qq + 20;
 	rx = r;
 	ry = r + 20;
 
@@ -172,9 +181,9 @@ static void point_add(u8 *r, u8 *p, u8 *q)
 	elt_add(t, px, qx);	// t = px+qx
 	elt_sub(rx, rx, t);	// rx = s*s - (px+qx)
 
-	elt_sub(t, rx, px);	// t = rx - px
-	elt_mul(ry, s, t);	// ry = s*(rx-px)
-	elt_add(ry, ry, py);	// ry = s*(rx-px) + py
+	elt_sub(t, px, rx);	// t = -(rx-px)
+	elt_mul(ry, s, t);	// ry = -s*(rx-px)
+	elt_sub(ry, ry, py);	// ry = -s*(rx-px) - py
 }
 
 static void point_mul(u8 *d, u8 *a, u8 *b)	// a is bignum
@@ -205,11 +214,14 @@ void generate_ecdsa(u8 *R, u8 *S, u8 *k, u8 *hash)
 	e[0] = 0;
 	memcpy(e + 1, hash, 20);
 
+try_again:
 	fp = fopen("/dev/random", "rb");
 	if (fread(m, sizeof m, 1, fp) != 1)
 		fail("reading random");
 	fclose(fp);
 	m[0] = 0;
+	if (bn_compare(m, ec_N, 21) >= 0)
+		goto try_again;
 
 	//	R = (mG).x
 
@@ -290,7 +302,8 @@ void ecdsa_set_priv(u8 *k)
 
 int ecdsa_verify(u8 *hash, u8 *R, u8 *S)
 {
-	return check_ecdsa(ec_Q, R, S, hash);
+	int bork = check_ecdsa(ec_Q, R, S, hash);
+	return bork;
 }
 
 void ecdsa_sign(u8 *hash, u8 *R, u8 *S)

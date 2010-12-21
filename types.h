@@ -76,7 +76,7 @@ struct key {
 	int pub_avail;
 	int priv_avail;
 	u8 pub[40];
-	u8 priv[20];
+	u8 priv[21];
 	u32 ctype;
 };
 

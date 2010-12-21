@@ -481,7 +481,7 @@ struct keylist *keys_get(enum sce_key type)
 			}
 
 			snprintf(path, sizeof path, "%s/%s-priv-%s", base, name, id);
-			if (key_read(path, 20, klist->keys[klist->n].priv) == 0)
+			if (key_read(path, 21, klist->keys[klist->n].priv) == 0)
 				klist->keys[klist->n].priv_avail = 1;
 
 
@@ -554,7 +554,7 @@ int key_get(enum sce_key type, const char *suffix, struct key *k)
 		k->pub_avail = -1;
 
 	snprintf(path, sizeof path, "%s/%s-priv-%s", base, name, suffix);
-	if (key_read(path, 20, k->priv) < 0)
+	if (key_read(path, 21, k->priv) < 0)
 		k->priv_avail = -1;
 
 	return 0;

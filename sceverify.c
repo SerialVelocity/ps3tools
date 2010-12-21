@@ -124,10 +124,10 @@ static void verify_signature(void)
 	hdmp("HASH", hash, 20);
 
 	printf("Signature\n");
-	if (ecdsa_verify(hash, r, s) < 0)
-		printf("  Status: FAIL\n");
-	else
+	if (ecdsa_verify(hash, r, s))
 		printf("  Status: OK\n");
+	else
+		printf("  Status: FAIL\n");
 
 	printf("\n");
 }
