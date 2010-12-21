@@ -368,8 +368,7 @@ static void sign_hdr(void)
 
 	sha1(pkg, sig_len, hash);
 
-	if (ecdsa_sign(hash, r, s) < 0)
-		fail("ecdsa_sign failed");
+	ecdsa_sign(hash, r, s);
 }
 
 int main(int argc, char *argv[])

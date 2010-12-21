@@ -1,5 +1,5 @@
-// Copyright 2010       Sven Peter <svenpeter@gmail.com>
-// Copyright 2007,2008  Segher Boessenkool  <segher@kernel.crashing.org>
+// Copyright 2010            Sven Peter <svenpeter@gmail.com>
+// Copyright 2007,2008,2010  Segher Boessenkool  <segher@kernel.crashing.org>
 // Licensed under the terms of the GNU GPL, version 2
 // http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt
 
@@ -52,8 +52,16 @@ int ecdsa_get_params(u32 type, u8 *p, u8 *a, u8 *b, u8 *N, u8 *Gx, u8 *Gy);
 int ecdsa_set_curve(u32 type);
 void ecdsa_set_pub(u8 *Q);
 void ecdsa_set_priv(u8 *k);
-int ecdsa_verify(u8 *hash, u8 *r, u8 *s);
-int ecdsa_sign(u8 *hash, u8 *r, u8 *s);
+int ecdsa_verify(u8 *hash, u8 *R, u8 *S);
+void ecdsa_sign(u8 *hash, u8 *R, u8 *S);
+
+void bn_copy(u8 *d, u8 *a, u32 n);
+void bn_add(u8 *d, u8 *a, u8 *b, u8 *N, u32 n);
+void bn_sub(u8 *d, u8 *a, u8 *b, u8 *N, u32 n);
+void bn_mul(u8 *d, u8 *a, u8 *b, u8 *N, u32 n);
+void bn_inv(u8 *d, u8 *a, u8 *N, u32 n);
+int bn_compare(u8 *a, u8 *b, u32 n);
+void bn_sub_modulus(u8 *a, u8 *N, u32 n);
 
 #define		round_up(x,n)	(-(-(x) & -(n)))
 

@@ -1,6 +1,9 @@
-// Copyright 2010	Sven Peter <svenpeter@gmail.com>
+// Copyright 2010            Sven Peter <svenpeter@gmail.com>
+// Copyright 2007,2008,2010  Segher Boessenkool  <segher@kernel.crashing.org>
 // Licensed under the terms of the GNU GPL, version 2
 // http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt
+
+#include <sys/types.h>
 #include <sys/mman.h>
 #include <stdio.h>
 #include <fcntl.h>
@@ -557,6 +560,14 @@ int key_get(enum sce_key type, const char *suffix, struct key *k)
 	return 0;
 }	
 
+static void memcpy_inv(u8 *dst, u8 *src, u32 len)
+{
+	u32 j;
+
+	for (j = 0; j < len; j++)
+		dst[j] = ~src[j];
+}
+
 int ecdsa_get_params(u32 type, u8 *p, u8 *a, u8 *b, u8 *N, u8 *Gx, u8 *Gy)
 {
 	static u8 tbl[64 * 121];
@@ -576,12 +587,12 @@ int ecdsa_get_params(u32 type, u8 *p, u8 *a, u8 *b, u8 *N, u8 *Gx, u8 *Gy)
 
 	offset = type * 121;
 
-	memcpy(p, tbl + offset + 0, 20);
-	memcpy(a, tbl + offset + 20, 20);
-	memcpy(b, tbl + offset + 40, 20);
-	memcpy(N, tbl + offset + 60, 20);
-	memcpy(Gx, tbl + offset + 81, 20);
-	memcpy(Gy, tbl + offset + 101, 20);
+	memcpy_inv(p, tbl + offset + 0, 20);
+	memcpy_inv(a, tbl + offset + 20, 20);
+	memcpy_inv(b, tbl + offset + 40, 20);
+	memcpy_inv(N, tbl + offset + 60, 21);
+	memcpy_inv(Gx, tbl + offset + 81, 20);
+	memcpy_inv(Gy, tbl + offset + 101, 20);
 
 	return 0;
 }

@@ -260,8 +260,7 @@ static void sign_hdr(void)
 
 	sha1(self, sig_len, hash);
 
-	if (ecdsa_sign(hash, r, s) < 0)
-		fail("ecdsa_sign failed");
+	ecdsa_sign(hash, r, s);
 }
 
 static u64 get_filesize(const char *path)

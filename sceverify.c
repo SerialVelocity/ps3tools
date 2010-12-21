@@ -100,8 +100,10 @@ static void hdmp(const char *n, u8 *p, u32 l)
 {
 	u32 i;
 	printf("%s: ", n);
+	for (i = l; i < 21; i++)
+		printf("  ");
 	for (i = 0; i < l; i++)
-		printf("%02x ", *p++);
+		printf("%02x", *p++);
 	printf("\n");
 }
 
@@ -122,11 +124,10 @@ static void verify_signature(void)
 	hdmp("HASH", hash, 20);
 
 	printf("Signature\n");
-	printf("  Status:");
 	if (ecdsa_verify(hash, r, s) < 0)
-		printf(" FAIL\n");
+		printf("  Status: FAIL\n");
 	else
-		printf(" OK\n");
+		printf("  Status: OK\n");
 
 	printf("\n");
 }
