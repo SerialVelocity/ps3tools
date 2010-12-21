@@ -193,11 +193,11 @@ static void build_meta_hdr(void)
 	// first info header
 	wbe64(ptr + 0x00, 0x2c0);	// offset
 	wbe64(ptr + 0x08, 0x40);	// size
-	wbe32(ptr + 0x10, 2); 		// unknown
-	wbe32(ptr + 0x14, 0);		// index
+	wbe32(ptr + 0x10, 1); 		// unknown
+	wbe32(ptr + 0x14, 1);		// index
 	wbe32(ptr + 0x18, 2);		// unknown again
 	wbe32(ptr + 0x1c, 0);		// sha index
-	wbe32(ptr + 0x20, 1);		// TODO: no encryption
+	wbe32(ptr + 0x20, 1);		// no encryption
 	wbe32(ptr + 0x24, 0xffffffff);	// key index
 	wbe32(ptr + 0x28, 0xffffffff);	// iv index
 	wbe32(ptr + 0x2c, 0x1);		// no compression
@@ -207,10 +207,10 @@ static void build_meta_hdr(void)
 	wbe64(ptr + 0x00, 0x300);	// offset
 	wbe64(ptr + 0x08, 0x40);	// size
 	wbe32(ptr + 0x10, 2); 		// unknown
-	wbe32(ptr + 0x14, 1);		// index
+	wbe32(ptr + 0x14, 2);		// index
 	wbe32(ptr + 0x18, 2);		// unknown again
 	wbe32(ptr + 0x1c, 8);		// sha index
-	wbe32(ptr + 0x20, 1);		// TODO: no encryption
+	wbe32(ptr + 0x20, 1);		// no encryption
 	wbe32(ptr + 0x24, 0xffffffff);	// key index
 	wbe32(ptr + 0x28, 0xffffffff);	// iv index
 	wbe32(ptr + 0x2c, 0x1);		// no compression
@@ -219,14 +219,14 @@ static void build_meta_hdr(void)
 	// package files
 	wbe64(ptr + 0x00, 0x340);	// offset
 	wbe64(ptr + 0x08, pkg_files_size);
-	wbe32(ptr + 0x10, 2); 		// unknown
-	wbe32(ptr + 0x14, 1);		// index
+	wbe32(ptr + 0x10, 3); 		// unknown
+	wbe32(ptr + 0x14, 3);		// index
 	wbe32(ptr + 0x18, 2);		// unknown again
 	wbe32(ptr + 0x1c, 16);		// sha index
 	wbe32(ptr + 0x20, 3);		// encrypted
 	wbe32(ptr + 0x24, 22);		// key index
 	wbe32(ptr + 0x28, 23);		// iv index
-	wbe32(ptr + 0x2c, 0x2);		// compressed
+	wbe32(ptr + 0x2c, 2);		// compressed
 	ptr += 0x30;
 
 	// add keys/ivs and hmac keys
@@ -270,7 +270,7 @@ static void build_info_hdr(void)
 	p = info_hdr;
 	wbe32(p + 0x00, 3);
 	wbe32(p + 0x04, 1);
-	wbe32(p + 0x08, 0x7f);	// XXX: saw multiple values here
+	wbe64(p + 0x08, 1);	// package type
 	wbe64(p + 0x10, version);
 	wbe64(p + 0x18, pkg_real_size - 0x80);
 	wbe64(p + 0x20, pkg_files_size);
