@@ -43,27 +43,7 @@ int bn_compare(u8 *a, u8 *b, u32 n)
 	return 0;
 }
 
-static void bn_sub_modulus(u8 *d, u8 *N, u32 n)
-{
-	u32 i;
-	u32 dig;
-	u8 c;
-
-	c = 0;
-	for (i = n - 1; i < n; i--) {
-		dig = N[i] + c;
-		c = (d[i] < dig);
-		d[i] -= dig;
-	}
-}
-
-void bn_reduce(u8 *d, u8 *N, u32 n)
-{
-	if (bn_compare(d, N, n) >= 0)
-		bn_sub_modulus(d, N, n);
-}
-
-void bn_add(u8 *d, u8 *a, u8 *b, u8 *N, u32 n)
+static u8 bn_add_1(u8 *d, u8 *a, u8 *b, u32 n)
 {
 	u32 i;
 	u32 dig;
@@ -76,18 +56,43 @@ void bn_add(u8 *d, u8 *a, u8 *b, u8 *N, u32 n)
 		d[i] = dig;
 	}
 
-	if (c)
-		bn_sub_modulus(d, N, n);
+	return c;
+}
+
+static u8 bn_sub_1(u8 *d, u8 *a, u8 *b, u32 n)
+{
+	u32 i;
+	u32 dig;
+	u8 c;
+
+	c = 0;
+	for (i = n - 1; i < n; i--) {
+		dig = b[i] + c;
+		c = (a[i] < dig);
+		d[i] = a[i] - dig;
+	}
+
+	return c;
+}
+
+void bn_add(u8 *d, u8 *a, u8 *b, u8 *N, u32 n)
+{
+	if (bn_add_1(d, a, b, n))
+		bn_sub_1(d, d, N, n);
 
 	bn_reduce(d, N, n);
 }
 
 void bn_sub(u8 *d, u8 *a, u8 *b, u8 *N, u32 n)
 {
-	u8 t[n];
-	bn_copy(t, N, n);
-	bn_sub_modulus(t, b, n);
-	bn_add(d, a, t, N, n);
+	if (bn_sub_1(d, a, b, n))
+		bn_add_1(d, d, N, n);
+}
+
+void bn_reduce(u8 *d, u8 *N, u32 n)
+{
+	if (bn_compare(d, N, n) >= 0)
+		bn_sub_1(d, d, N, n);
 }
 
 void bn_mul(u8 *d, u8 *a, u8 *b, u8 *N, u32 n)
@@ -128,9 +133,8 @@ void bn_inv(u8 *d, u8 *a, u8 *N, u32 n)
 {
 	u8 t[512], s[512];
 
-	bn_copy(t, N, n);
 	bn_zero(s, n);
 	s[n-1] = 2;
-	bn_sub_modulus(t, s, n);
+	bn_sub_1(t, N, s, n);
 	bn_exp(d, a, N, n, t, n);
 }
