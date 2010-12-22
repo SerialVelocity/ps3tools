@@ -52,7 +52,7 @@ static u8 bn_add_1(u8 *d, u8 *a, u8 *b, u32 n)
 	c = 0;
 	for (i = n - 1; i < n; i--) {
 		dig = a[i] + b[i] + c;
-		c = (dig >= 0x100);
+		c = dig >> 8;
 		d[i] = dig;
 	}
 
@@ -65,14 +65,14 @@ static u8 bn_sub_1(u8 *d, u8 *a, u8 *b, u32 n)
 	u32 dig;
 	u8 c;
 
-	c = 0;
+	c = 1;
 	for (i = n - 1; i < n; i--) {
-		dig = b[i] + c;
-		c = (a[i] < dig);
-		d[i] = a[i] - dig;
+		dig = a[i] + 255 - b[i] + c;
+		c = dig >> 8;
+		d[i] = dig;
 	}
 
-	return c;
+	return 1 - c;
 }
 
 void bn_add(u8 *d, u8 *a, u8 *b, u8 *N, u32 n)
@@ -95,19 +95,53 @@ void bn_reduce(u8 *d, u8 *N, u32 n)
 		bn_sub_1(d, d, N, n);
 }
 
-void bn_mul(u8 *d, u8 *a, u8 *b, u8 *N, u32 n)
+static u8 bn_muladd_dig(u8 *d, u8 *a, u8 b, u32 n)
+{
+	u32 dig;
+	u32 i;
+
+	dig = 0;
+	for (i = n - 1; i < n; i--) {
+		dig += d[i] + a[i]*b;
+		d[i] = dig;
+		dig >>= 8;
+	}
+
+	return dig;
+}
+
+static void bn_reduce_extra_dig(u8 dig, u8 *d, u8 Np[8][256], u8 Nd[8], u32 n)
 {
 	u32 i;
-	u8 mask;
+
+	for (i = 7; i < 8; i--) {
+		if (dig > Nd[i] ||
+		    (dig == Nd[i] && bn_compare(d, Np[i], n) >= 0))
+			dig -= Nd[i] + bn_sub_1(d, d, Np[i], n);
+	}
+}
+
+void bn_mul(u8 *d, u8 *a, u8 *b, u8 *N, u32 n)
+{
+	u8 Np[8][256];
+	u8 Nd[8];
+	u32 i;
+
+	Nd[0] = 0;
+	bn_copy(Np[0], N, n);
+	for (i = 0; i < 7; i++)
+		Nd[i+1] = 2*Nd[i] + bn_add_1(Np[i+1], Np[i], Np[i], n);
 
 	bn_zero(d, n);
+	for (i = 0; i < n; i++) {
+		u8 bd = d[0];
+		memcpy(d, d+1, n-1);
+		d[n-1] = 0;
+		bn_reduce_extra_dig(bd, d, Np, Nd, n);
 
-	for (i = 0; i < n; i++)
-		for (mask = 0x80; mask != 0; mask >>= 1) {
-			bn_add(d, d, d, N, n);
-			if ((a[i] & mask) != 0)
-				bn_add(d, d, b, N, n);
-		}
+		bd = bn_muladd_dig(d, b, a[i], n);
+		bn_reduce_extra_dig(bd, d, Np, Nd, n);
+	}
 }
 
 void bn_exp(u8 *d, u8 *a, u8 *N, u32 n, u8 *e, u32 en)
