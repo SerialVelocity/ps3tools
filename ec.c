@@ -48,9 +48,7 @@ static void elt_sub(u8 *d, u8 *a, u8 *b)
 
 static void elt_mul(u8 *d, u8 *a, u8 *b)
 {
-	u8 s[20];
-	bn_mul(s, a, b, ec_p, 20);
-	elt_copy(d, s);
+	bn_mul(d, a, b, ec_p, 20);
 }
 
 static void elt_square(u8 *d, u8 *a)

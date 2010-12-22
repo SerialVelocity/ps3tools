@@ -75,6 +75,23 @@ static u8 bn_sub_1(u8 *d, u8 *a, u8 *b, u32 n)
 	return 1 - c;
 }
 
+void bn_reduce(u8 *d, u8 *N, u32 n)
+{
+	if (bn_compare(d, N, n) >= 0)
+		bn_sub_1(d, d, N, n);
+}
+
+static void bn_reduce_extra_dig(u8 dig, u8 *d, u8 Np[8][512], u8 Nd[8], u32 n)
+{
+	u32 i;
+
+	for (i = 7; i < 8; i--) {
+		if (dig > Nd[i] ||
+		    (dig == Nd[i] && bn_compare(d, Np[i], n) >= 0))
+			dig -= Nd[i] + bn_sub_1(d, d, Np[i], n);
+	}
+}
+
 void bn_add(u8 *d, u8 *a, u8 *b, u8 *N, u32 n)
 {
 	if (bn_add_1(d, a, b, n))
@@ -89,13 +106,7 @@ void bn_sub(u8 *d, u8 *a, u8 *b, u8 *N, u32 n)
 		bn_add_1(d, d, N, n);
 }
 
-void bn_reduce(u8 *d, u8 *N, u32 n)
-{
-	if (bn_compare(d, N, n) >= 0)
-		bn_sub_1(d, d, N, n);
-}
-
-static u8 bn_muladd_dig(u8 *d, u8 *a, u8 b, u32 n)
+static void bn_muladd_dig(u8 *d, u8 *a, u8 b, u8 Np[8][512], u8 Nd[8], u32 n)
 {
 	u32 dig;
 	u32 i;
@@ -107,24 +118,22 @@ static u8 bn_muladd_dig(u8 *d, u8 *a, u8 b, u32 n)
 		dig >>= 8;
 	}
 
-	return dig;
+	bn_reduce_extra_dig(dig, d, Np, Nd, n);
 }
 
-static void bn_reduce_extra_dig(u8 dig, u8 *d, u8 Np[8][256], u8 Nd[8], u32 n)
+static void bn_shift_dig(u8 *d, u8 Np[8][512], u8 Nd[8], u32 n)
 {
-	u32 i;
-
-	for (i = 7; i < 8; i--) {
-		if (dig > Nd[i] ||
-		    (dig == Nd[i] && bn_compare(d, Np[i], n) >= 0))
-			dig -= Nd[i] + bn_sub_1(d, d, Np[i], n);
-	}
+	u8 bd = d[0];
+	memcpy(d, d+1, n-1);
+	d[n-1] = 0;
+	bn_reduce_extra_dig(bd, d, Np, Nd, n);
 }
 
 void bn_mul(u8 *d, u8 *a, u8 *b, u8 *N, u32 n)
 {
-	u8 Np[8][256];
+	u8 Np[8][512];
 	u8 Nd[8];
+	u8 t[512];
 	u32 i;
 
 	Nd[0] = 0;
@@ -132,16 +141,13 @@ void bn_mul(u8 *d, u8 *a, u8 *b, u8 *N, u32 n)
 	for (i = 0; i < 7; i++)
 		Nd[i+1] = 2*Nd[i] + bn_add_1(Np[i+1], Np[i], Np[i], n);
 
-	bn_zero(d, n);
+	bn_zero(t, n);
 	for (i = 0; i < n; i++) {
-		u8 bd = d[0];
-		memcpy(d, d+1, n-1);
-		d[n-1] = 0;
-		bn_reduce_extra_dig(bd, d, Np, Nd, n);
-
-		bd = bn_muladd_dig(d, b, a[i], n);
-		bn_reduce_extra_dig(bd, d, Np, Nd, n);
+		bn_shift_dig(t, Np, Nd, n);
+		bn_muladd_dig(t, a, b[i], Np, Nd, n);
 	}
+
+	bn_copy(d, t, n);
 }
 
 void bn_exp(u8 *d, u8 *a, u8 *N, u32 n, u8 *e, u32 en)
