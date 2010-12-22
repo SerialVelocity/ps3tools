@@ -43,7 +43,7 @@ int bn_compare(u8 *a, u8 *b, u32 n)
 	return 0;
 }
 
-void bn_sub_modulus(u8 *a, u8 *N, u32 n)
+static void bn_sub_modulus(u8 *d, u8 *N, u32 n)
 {
 	u32 i;
 	u32 dig;
@@ -52,9 +52,15 @@ void bn_sub_modulus(u8 *a, u8 *N, u32 n)
 	c = 0;
 	for (i = n - 1; i < n; i--) {
 		dig = N[i] + c;
-		c = (a[i] < dig);
-		a[i] -= dig;
+		c = (d[i] < dig);
+		d[i] -= dig;
 	}
+}
+
+void bn_reduce(u8 *d, u8 *N, u32 n)
+{
+	if (bn_compare(d, N, n) >= 0)
+		bn_sub_modulus(d, N, n);
 }
 
 void bn_add(u8 *d, u8 *a, u8 *b, u8 *N, u32 n)
@@ -73,8 +79,7 @@ void bn_add(u8 *d, u8 *a, u8 *b, u8 *N, u32 n)
 	if (c)
 		bn_sub_modulus(d, N, n);
 
-	if (bn_compare(d, N, n) >= 0)
-		bn_sub_modulus(d, N, n);
+	bn_reduce(d, N, n);
 }
 
 void bn_sub(u8 *d, u8 *a, u8 *b, u8 *N, u32 n)

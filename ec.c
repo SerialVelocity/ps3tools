@@ -228,14 +228,12 @@ try_again:
 	point_mul(mG, m, ec_G);
 	R[0] = 0;
 	elt_copy(R+1, mG);
-	if (bn_compare(R, ec_N, 21) >= 0)
-		bn_sub_modulus(R, ec_N, 21);
+	bn_reduce(R, ec_N, 21);
 
 	//	S = m**-1*(e + Rk) (mod N)
 
 	bn_copy(kk, k, 21);
-	if (bn_compare(kk, ec_N, 21) >= 0)
-		bn_sub_modulus(kk, ec_N, 21);
+	bn_reduce(kk, ec_N, 21);
 	bn_mul(S, R, kk, ec_N, 21);
 	bn_add(kk, S, e, ec_N, 21);
 	bn_inv(minv, m, ec_N, 21);
@@ -265,9 +263,7 @@ int check_ecdsa(u8 *Q, u8 *R, u8 *S, u8 *hash)
 
 	rr[0] = 0;
 	memcpy(rr + 1, r1, 20);
-
-	if (bn_compare(rr, ec_N, 21) >= 0)
-		bn_sub_modulus(rr, ec_N, 21);
+	bn_reduce(rr, ec_N, 21);
 
 	return (bn_compare(rr, R, 21) == 0);
 }
