@@ -229,6 +229,7 @@ static void generate_ecdsa(u8 *R, u8 *S, u8 *k, u8 *hash)
 
 	e[0] = 0;
 	memcpy(e + 1, hash, 20);
+	bn_reduce(e, ec_N, 21);
 
 try_again:
 	fp = fopen("/dev/random", "rb");
@@ -274,6 +275,7 @@ static int check_ecdsa(struct point *Q, u8 *R, u8 *S, u8 *hash)
 
 	e[0] = 0;
 	memcpy(e + 1, hash, 20);
+	bn_reduce(e, ec_N, 21);
 
 	bn_to_mon(R, ec_N, 21);
 	bn_to_mon(S, ec_N, 21);
