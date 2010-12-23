@@ -7,12 +7,17 @@
 
 #include "tools.h"
 
+struct point {
+	u8 x[20];
+	u8 y[20];
+};
+
 static u8 ec_p[20];
 static u8 ec_a[20];	// mon
 static u8 ec_b[20];	// mon
 static u8 ec_N[21];
-static u8 ec_G[40];	// mon
-static u8 ec_Q[40];	// mon
+static struct point ec_G;	// mon
+static struct point ec_Q;	// mon
 static u8 ec_k[21];
 
 static void elt_copy(u8 *d, u8 *a)
@@ -63,16 +68,16 @@ static void elt_inv(u8 *d, u8 *a)
 	bn_mon_inv(d, s, ec_p, 20);
 }
 
-static void point_to_mon(u8 *p)
+static void point_to_mon(struct point *p)
 {
-	bn_to_mon(p, ec_p, 20);
-	bn_to_mon(p+20, ec_p, 20);
+	bn_to_mon(p->x, ec_p, 20);
+	bn_to_mon(p->y, ec_p, 20);
 }
 
-static void point_from_mon(u8 *p)
+static void point_from_mon(struct point *p)
 {
-	bn_from_mon(p, ec_p, 20);
-	bn_from_mon(p+20, ec_p, 20);
+	bn_from_mon(p->x, ec_p, 20);
+	bn_from_mon(p->y, ec_p, 20);
 }
 
 #if 0
@@ -99,29 +104,29 @@ static int point_is_on_curve(u8 *p)
 }
 #endif
 
-static int point_zero(u8 *p)
+static int point_zero(struct point *p)
 {
-	elt_zero(p);
-	elt_zero(p+20);
+	elt_zero(p->x);
+	elt_zero(p->y);
 }
 
-static int point_is_zero(u8 *p)
+static int point_is_zero(struct point *p)
 {
-	return elt_is_zero(p) && elt_is_zero(p+20);
+	return elt_is_zero(p->x) && elt_is_zero(p->y);
 }
 
-static void point_double(u8 *r, u8 *p)
+static void point_double(struct point *r, struct point *p)
 {
 	u8 s[20], t[20];
-	u8 pp[40];
+	struct point pp;
 	u8 *px, *py, *rx, *ry;
 
-	memcpy(pp, p, 40);
+	pp = *p;
 
-	px = pp;
-	py = pp + 20;
-	rx = r;
-	ry = r + 20;
+	px = pp.x;
+	py = pp.y;
+	rx = r->x;
+	ry = r->y;
 
 	if (elt_is_zero(py)) {
 		point_zero(r);
@@ -145,29 +150,29 @@ static void point_double(u8 *r, u8 *p)
 	elt_sub(ry, ry, py);	// ry = -s*(rx-px) - py
 }
 
-static void point_add(u8 *r, u8 *p, u8 *q)
+static void point_add(struct point *r, struct point *p, struct point *q)
 {
 	u8 s[20], t[20], u[20];
 	u8 *px, *py, *qx, *qy, *rx, *ry;
-	u8 pp[40], qq[40];
+	struct point pp, qq;
 
-	memcpy(pp, p, 40);
-	memcpy(qq, q, 40);
+	pp = *p;
+	qq = *q;
 
-	px = pp;
-	py = pp + 20;
-	qx = qq;
-	qy = qq + 20;
-	rx = r;
-	ry = r + 20;
+	px = pp.x;
+	py = pp.y;
+	qx = qq.x;
+	qy = qq.y;
+	rx = r->x;
+	ry = r->y;
 
-	if (point_is_zero(pp)) {
+	if (point_is_zero(&pp)) {
 		elt_copy(rx, qx);
 		elt_copy(ry, qy);
 		return;
 	}
 
-	if (point_is_zero(qq)) {
+	if (point_is_zero(&qq)) {
 		elt_copy(rx, px);
 		elt_copy(ry, py);
 		return;
@@ -178,7 +183,7 @@ static void point_add(u8 *r, u8 *p, u8 *q)
 	if (elt_is_zero(u)) {
 		elt_sub(u, qy, py);
 		if (elt_is_zero(u))
-			point_double(r, pp);
+			point_double(r, &pp);
 		else
 			point_zero(r);
 
@@ -198,7 +203,7 @@ static void point_add(u8 *r, u8 *p, u8 *q)
 	elt_sub(ry, ry, py);	// ry = -s*(rx-px) - py
 }
 
-static void point_mul(u8 *d, u8 *a, u8 *b)	// a is bignum
+static void point_mul(struct point *d, u8 *a, struct point *b)	// a is bignum
 {
 	u32 i;
 	u8 mask;
@@ -219,7 +224,7 @@ static void generate_ecdsa(u8 *R, u8 *S, u8 *k, u8 *hash)
 	u8 kk[21];
 	u8 m[21];
 	u8 minv[21];
-	u8 mG[40];
+	struct point mG;
 	FILE *fp;
 
 	e[0] = 0;
@@ -236,10 +241,10 @@ try_again:
 
 	//	R = (mG).x
 
-	point_mul(mG, m, ec_G);
-	point_from_mon(mG);
+	point_mul(&mG, m, &ec_G);
+	point_from_mon(&mG);
 	R[0] = 0;
-	elt_copy(R+1, mG);
+	elt_copy(R+1, mG.x);
 
 	//	S = m**-1*(e + Rk) (mod N)
 
@@ -259,12 +264,12 @@ try_again:
 	bn_from_mon(S, ec_N, 21);
 }
 
-static int check_ecdsa(u8 *Q, u8 *R, u8 *S, u8 *hash)
+static int check_ecdsa(struct point *Q, u8 *R, u8 *S, u8 *hash)
 {
 	u8 Sinv[21];
 	u8 e[21];
 	u8 w1[20], w2[20];
-	u8 r1[40], r2[40];
+	struct point r1, r2;
 	u8 rr[21];
 
 	e[0] = 0;
@@ -282,15 +287,15 @@ static int check_ecdsa(u8 *Q, u8 *R, u8 *S, u8 *hash)
 	bn_from_mon(w1, ec_N, 21);
 	bn_from_mon(w2, ec_N, 21);
 
-	point_mul(r1, w1, ec_G);
-	point_mul(r2, w2, Q);
+	point_mul(&r1, w1, &ec_G);
+	point_mul(&r2, w2, Q);
 
-	point_add(r1, r1, r2);
+	point_add(&r1, &r1, &r2);
 
-	point_from_mon(r1);
+	point_from_mon(&r1);
 
 	rr[0] = 0;
-	memcpy(rr + 1, r1, 20);
+	memcpy(rr + 1, r1.x, 20);
 	bn_reduce(rr, ec_N, 21);
 
 	bn_from_mon(R, ec_N, 21);
@@ -308,26 +313,22 @@ static void ec_priv_to_pub(u8 *k, u8 *Q)
 
 int ecdsa_set_curve(u32 type)
 {
-	u8 Gx[20], Gy[20];
-
-	if (ecdsa_get_params(type, ec_p, ec_a, ec_b, ec_N, Gx, Gy) < 0)
+	if (ecdsa_get_params(type, ec_p, ec_a, ec_b, ec_N, ec_G.x, ec_G.y) < 0)
 		return -1;
 
 	bn_to_mon(ec_a, ec_p, 20);
 	bn_to_mon(ec_b, ec_p, 20);
 
-	memcpy(ec_G, Gx, 20);
-	memcpy(ec_G+20, Gy, 20);
-
-	point_to_mon(ec_G);
+	point_to_mon(&ec_G);
 
 	return 0;
 }
 
 void ecdsa_set_pub(u8 *Q)
 {
-	memcpy(ec_Q, Q, 40);
-	point_to_mon(ec_Q);
+	memcpy(ec_Q.x, Q, 20);
+	memcpy(ec_Q.y, Q+20, 20);
+	point_to_mon(&ec_Q);
 }
 
 void ecdsa_set_priv(u8 *k)
@@ -337,8 +338,7 @@ void ecdsa_set_priv(u8 *k)
 
 int ecdsa_verify(u8 *hash, u8 *R, u8 *S)
 {
-	int bork = check_ecdsa(ec_Q, R, S, hash);
-	return bork;
+	return check_ecdsa(&ec_Q, R, S, hash);
 }
 
 void ecdsa_sign(u8 *hash, u8 *R, u8 *S)
