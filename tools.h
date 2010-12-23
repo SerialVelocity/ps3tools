@@ -56,12 +56,14 @@ int ecdsa_verify(u8 *hash, u8 *R, u8 *S);
 void ecdsa_sign(u8 *hash, u8 *R, u8 *S);
 
 void bn_copy(u8 *d, u8 *a, u32 n);
-void bn_add(u8 *d, u8 *a, u8 *b, u8 *N, u32 n);
-void bn_sub(u8 *d, u8 *a, u8 *b, u8 *N, u32 n);
-void bn_mul(u8 *d, u8 *a, u8 *b, u8 *N, u32 n);
-void bn_inv(u8 *d, u8 *a, u8 *N, u32 n);
 int bn_compare(u8 *a, u8 *b, u32 n);
 void bn_reduce(u8 *d, u8 *N, u32 n);
+void bn_add(u8 *d, u8 *a, u8 *b, u8 *N, u32 n);
+void bn_sub(u8 *d, u8 *a, u8 *b, u8 *N, u32 n);
+void bn_to_mon(u8 *d, u8 *N, u32 n);
+void bn_from_mon(u8 *d, u8 *N, u32 n);
+void bn_mon_mul(u8 *d, u8 *a, u8 *b, u8 *N, u32 n);
+void bn_mon_inv(u8 *d, u8 *a, u8 *N, u32 n);
 
 #define		round_up(x,n)	(-(-(x) & -(n)))
 
