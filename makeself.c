@@ -173,6 +173,40 @@ static void build_sec_hdr(void)
 	}
 }
 
+static void meta_add_phdr(u8 *ptr, u32 i)
+{
+	wbe64(ptr + 0x00, phdr[i].p_off + header_size);
+	wbe64(ptr + 0x08, phdr[i].p_filesz);
+
+	// unknown
+	wbe32(ptr + 0x10, 2);
+	wbe32(ptr + 0x14, i);		// phdr index maybe?
+	wbe32(ptr + 0x18, 2);
+
+	wbe32(ptr + 0x1c, i*8);		// sha index
+	wbe32(ptr + 0x20, 1);		// not encpryted
+	wbe32(ptr + 0x24, 0xffffffff);	// no key
+	wbe32(ptr + 0x28, 0xffffffff);	// no iv
+	wbe32(ptr + 0x2c, 1);		// not compressed
+}
+
+static void meta_add_load(u8 *ptr, u32 i)
+{
+	wbe64(ptr + 0x00, phdr[i].p_off + header_size);
+	wbe64(ptr + 0x08, phdr[i].p_filesz);
+
+	// unknown
+	wbe32(ptr + 0x10, 2);
+	wbe32(ptr + 0x14, i);		// phdr index maybe?
+	wbe32(ptr + 0x18, 2);
+
+	wbe32(ptr + 0x1c, i*8);		// sha index
+	wbe32(ptr + 0x20, 3);		// phdr is encrypted
+	wbe32(ptr + 0x24, (i*8) + 6);	// key index
+	wbe32(ptr + 0x28, (i*8) + 7);	// iv index
+	wbe32(ptr + 0x2c, 1);		// not compressed
+}
+
 static void build_meta_hdr(void)
 {
 	u32 i;
@@ -197,19 +231,10 @@ static void build_meta_hdr(void)
 
 	// add encrypted phdr information
 	for (i = 0; i < ehdr.e_phnum; i++) {
-		wbe64(ptr + 0x00, phdr[i].p_off + header_size);
-		wbe64(ptr + 0x08, phdr[i].p_filesz);
-
-		// unknown
-		wbe32(ptr + 0x10, 2);
-		wbe32(ptr + 0x14, i);		// phdr index maybe?
-		wbe32(ptr + 0x18, 2);
-
-		wbe32(ptr + 0x1c, i*8);		// sha index
-		wbe32(ptr + 0x20, 3);		// phdr is encrypted
-		wbe32(ptr + 0x24, (i*8) + 6);	// key index
-		wbe32(ptr + 0x28, (i*8) + 7);	// iv index
-		wbe32(ptr + 0x2c, 1);		// not compressed
+		if (phdr[i].p_type == 1) 
+			meta_add_load(ptr, i);
+		else
+			meta_add_phdr(ptr, i);
 
 		ptr += 0x30;
 	}
