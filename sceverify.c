@@ -19,6 +19,7 @@ static u64 info_offset;
 static u32 app_type;
 static u64 filesize;
 static u64 header_len;
+static int did_fail = 0;
 
 static struct keylist *klist = NULL;
 
@@ -96,17 +97,6 @@ static void decrypt(void)
 	ecdsa_set_pub(klist->keys[keyid].pub);
 }
 
-static void hdmp(const char *n, u8 *p, u32 l)
-{
-	u32 i;
-	printf("%s: ", n);
-	for (i = l; i < 21; i++)
-		printf("  ");
-	for (i = 0; i < l; i++)
-		printf("%02x", *p++);
-	printf("\n");
-}
-
 static void verify_signature(void)
 {
 	u8 *r, *s;
@@ -118,10 +108,6 @@ static void verify_signature(void)
 	s = r + 21;
 
 	sha1(ptr, sig_len, hash);
-
-	hdmp("R   ", r, 21);
-	hdmp("S   ", s, 21);
-	hdmp("HASH", hash, 20);
 
 	printf("Signature\n");
 	if (ecdsa_verify(hash, r, s))
@@ -181,12 +167,14 @@ static void verify_hashes(void)
 	for (i = 0; i < meta_n_hdr; i++) {
 		printf("  Section #%02d:  ", i);
 		res = verify_hash(ptr + meta_offset + 0x80 + 0x30 * i, hashes);
-		if (res < 0)
-			printf("FAIL\n");
-		else if (res > 0)
+		if (res < 0) {
+			did_fail = 1;
+			printf("FAIL*\n");
+		} else if (res > 0) {
 		       printf("???\n");
-		else
+		} else {
 			printf("OK\n");
+		}
 	}
 	
 	printf("\n");
@@ -218,5 +206,8 @@ int main(int argc, char *argv[])
 	verify_signature();
 	verify_hashes();
 
+	if (did_fail)
+		printf(" * please not that the hash will always fail for "
+		       "unaligned non-LOAD phdrs\n");
 	return 0;
 }
