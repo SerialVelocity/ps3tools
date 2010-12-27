@@ -143,7 +143,7 @@ static void get_version(const char *v)
 		}
 
 		if (*ptr >= '0' && *ptr <= '9') {
-			tmp <<= 8;
+			tmp <<= 4;
 			tmp += *ptr - '0';
 			ptr++;
 			continue;
@@ -153,6 +153,8 @@ static void get_version(const char *v)
 		version = 1ULL << 48;
 		return;
 	}
+
+	printf("version: %x.%x.%x\n", maj, min, rev);
 
 	version  = ((u64)maj & 0xffff) << 48;
 	version |= ((u64)min & 0xffff) << 32;

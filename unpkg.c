@@ -10,6 +10,7 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <sys/stat.h>
 
 u8 *pkg = NULL;
 static u64 dec_size;
@@ -135,6 +136,8 @@ int main(int argc, char *argv[])
 		fail("usage: unpkg filename.pkg target");
 
 	pkg = mmap_file(argv[1]);
+
+	mkdir(argv[2], 0777);
 
 	if (chdir(argv[2]) != 0)
 		fail("chdir");
