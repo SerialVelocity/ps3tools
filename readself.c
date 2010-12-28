@@ -25,6 +25,7 @@ static u64 header_len;
 static u64 phdr_offset;
 static u64 shdr_offset;
 static u64 filesize;
+static u32 vendorid;
 static u64 authid;
 static u64 app_version;
 static u32 app_type;
@@ -128,6 +129,7 @@ static void parse_self(void)
 	ctrl_offset = be64(self + 0x58);
 	ctrl_size =   be64(self + 0x60);
 
+	vendorid =    be32(self + info_offset + 0x08);
 	authid =      be64(self + info_offset + 0x00);
 	app_type =    be32(self + info_offset + 0x0c);
 	app_version = be64(self + info_offset + 0x10);
@@ -199,6 +201,7 @@ static void show_self_header(void)
 	printf("  shdr offset:    %08x_%08x\n", (u32)(shdr_offset>>32), (u32)shdr_offset);
 	printf("  file size:      %08x_%08x\n", (u32)(filesize>>32), (u32)filesize);
 	printf("  auth id:        %08x_%08x (%s)\n", (u32)(authid>>32), (u32)authid, get_auth_type());
+	printf("  vendor id:      %08x\n", vendorid);
 	printf("  info offset:    %08x_%08x\n", (u32)(info_offset >> 32), (u32)info_offset);
 	printf("  sinfo offset:   %08x_%08x\n", (u32)(sec_offset >> 32), (u32)sec_offset);	
 	printf("  version offset: %08x_%08x\n", (u32)(ver_info >> 32), (u32)ver_info);

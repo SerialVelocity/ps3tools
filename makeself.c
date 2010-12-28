@@ -90,7 +90,7 @@ static void build_sce_hdr(void)
 
 	wbe32(sce_header + 0x00, 0x53434500);	// magic
 	wbe32(sce_header + 0x04, 2);		// version
-	wbe16(sce_header + 0x08, 1);		// dunno, sdk type?
+	wbe16(sce_header + 0x08, 0);		// dunno, sdk type?
 	wbe16(sce_header + 0x0a, 1);		// SCE header type; self
 	wbe32(sce_header + 0x0c, meta_offset);
 	wbe64(sce_header + 0x10, header_size);
@@ -119,7 +119,7 @@ static void build_info_hdr(void)
 			auth_id = 0x1010000001000003ULL;
 			break;
 		case KEY_LV2:
-			app_type = 2;
+			app_type = 3;
 			auth_id = 0x1050000003000001ULL;
 			break;
 		case KEY_ISO:
@@ -131,8 +131,9 @@ static void build_info_hdr(void)
 	}
 
 	wbe64(info_header + 0x00, auth_id);
+	wbe32(info_header + 0x08, 0x05000002);
 	wbe32(info_header + 0x0c, app_type);
-	wbe64(info_header + 0x10, 0x0001000000000000ULL); // version 1.0.0
+	wbe64(info_header + 0x10, 0x0003001500000000ULL); // version 1.0.0
 }
 
 static void build_ctrl_hdr(void)
@@ -225,6 +226,7 @@ static void build_meta_hdr(void)
 
 	// area covered by the signature
 	wbe64(ptr + 0x00, meta_offset + meta_header_size - 0x30);
+	wbe32(ptr + 0x08, 1);
 	wbe32(ptr + 0x0c, ehdr.e_phnum);	// number of encrypted headers
 	wbe32(ptr + 0x10, ehdr.e_phnum * 8);	// number of keys/hashes required
 	ptr += 0x20;
