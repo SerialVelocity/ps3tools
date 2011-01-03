@@ -50,12 +50,18 @@ struct key ks;
 
 static void get_type(const char *p)
 {
-	if (strncmp(p, "lv2", 4) == 0)
+	if (strncmp(p, "lv0", 4) == 0)
+		type = KEY_LV0;
+	else if (strncmp(p, "lv1", 4) == 0)
+		type = KEY_LV1;
+	else if (strncmp(p, "lv2", 4) == 0)
 		type = KEY_LV2;
 	else if (strncmp(p, "iso", 4) == 0)
 		type = KEY_ISO;
 	else if (strncmp(p, "app", 4) == 0)
 		type = KEY_APP;
+	else if (strncmp(p, "ldr", 4) == 0)
+		type = KEY_LDR;
 	else
 		fail("invalid type: %s", p);
 }
