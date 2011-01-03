@@ -209,7 +209,7 @@ static void show_self_header(void)
 	         (u32)(ctrl_offset >> 32), (u32)ctrl_offset,
 	         (u32)(ctrl_size >> 32), (u32)ctrl_size);
 
-	printf("  app version:    %d.%d.%d\n", (u16)(app_version >> 48), (u16)(app_version >> 32), (u32)app_version);
+	printf("  app version:    %x.%x.%x\n", (u16)(app_version >> 48), (u16)(app_version >> 32), (u32)app_version);
 	printf("  SDK type:       %s\n", id2name(sdk_type, t_sdk_type, "unknown"));
 	printf("  app type:       %s\n", id2name(app_type, t_app_type, "unknown"));
 

@@ -154,7 +154,8 @@ static void get_version(const char *v)
 		return;
 	}
 
-	printf("version: %x.%x.%x\n", maj, min, rev);
+	if (i == 2)
+		rev = tmp;
 
 	version  = ((u64)maj & 0xffff) << 48;
 	version |= ((u64)min & 0xffff) << 32;

@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <limits.h>
 #include <sys/stat.h>
 
 #define	MAX_PHDR	255
@@ -40,7 +41,10 @@ static u64 phdr_offset;
 static u64 shdr_offset;
 static u64 sec_offset;
 static u64 ctrl_offset;
-
+static u64 version;
+static u64 auth_id;
+static u64 vendor_id;
+static u16 sdk_type;
 
 struct key ks;
 
@@ -90,7 +94,7 @@ static void build_sce_hdr(void)
 
 	wbe32(sce_header + 0x00, 0x53434500);	// magic
 	wbe32(sce_header + 0x04, 2);		// version
-	wbe16(sce_header + 0x08, 0);		// dunno, sdk type?
+	wbe16(sce_header + 0x08, sdk_type);	// dunno, sdk type?
 	wbe16(sce_header + 0x0a, 1);		// SCE header type; self
 	wbe32(sce_header + 0x0c, meta_offset);
 	wbe64(sce_header + 0x10, header_size);
@@ -109,31 +113,27 @@ static void build_sce_hdr(void)
 static void build_info_hdr(void)
 {
 	u32 app_type;
-	u64 auth_id;
 
 	memset(info_header, 0, sizeof info_header);
 
 	switch (type) {
 		case KEY_APP:
 			app_type = 4;
-			auth_id = 0x1010000001000003ULL;
 			break;
 		case KEY_LV2:
 			app_type = 3;
-			auth_id = 0x1050000003000001ULL;
 			break;
 		case KEY_ISO:
 			app_type = 5;
-			auth_id = 0x1070000020000001ULL;
 			break;
 		default:
 			fail("something that should never fail failed.");	
 	}
 
 	wbe64(info_header + 0x00, auth_id);
-	wbe32(info_header + 0x08, 0x05000002);
+	wbe32(info_header + 0x08, vendor_id);
 	wbe32(info_header + 0x0c, app_type);
-	wbe64(info_header + 0x10, 0x0003001500000000ULL); // version 1.0.0
+	wbe64(info_header + 0x10, version); // version 1.0.0
 }
 
 static void build_ctrl_hdr(void)
@@ -299,18 +299,87 @@ static u64 get_filesize(const char *path)
 	return st.st_size;
 }
 
+static void get_version(const char *v)
+{
+	u8 *ptr;
+	u32 i;
+	u32 maj, min, rev;
+	u32 tmp;
+
+	i = 0;
+	maj = min = rev = tmp = 0;
+	ptr = (u8 *)v;
+	while (*ptr) {
+		if (i > 2) {
+			fprintf(stderr, "WARNING: invalid sdk_version, using 1.0.0\n");
+			version = 1ULL << 48;
+			return;
+		}
+
+		if (*ptr == '.') {
+			if (i == 0)
+				maj = tmp;
+			else if (i == 1)
+				min = tmp;
+			else if (i == 2)
+				rev = tmp;
+			i++;
+			ptr++;
+			tmp = 0;
+			continue;
+		}
+
+		if (*ptr >= '0' && *ptr <= '9') {
+			tmp <<= 4;
+			tmp += *ptr - '0';
+			ptr++;
+			continue;
+		}
+	
+		fprintf(stderr, "WARNING: invalid sdk_version, using 1.0.0\n");
+		version = 1ULL << 48;
+		return;
+	}
+
+	if (i == 2)
+		rev = tmp;
+
+	version  = ((u64)maj & 0xffff) << 48;
+	version |= ((u64)min & 0xffff) << 32;
+	version |= rev;
+}
+
+static void get_vendor(char *v)
+{
+	vendor_id = strtoull(v, NULL, 16);
+}
+
+static void get_auth(char *a)
+{
+	auth_id = strtoull(a, NULL, 16);
+}
+
+static void get_sdktype(char * t)
+{
+	sdk_type = strtoul(t, NULL, 10);
+}
+
 int main(int argc, char *argv[])
 {
 	FILE *fp;
 
-	if (argc != 5)
-		fail("usage: makeself [type] [version suffix] [elf] [self]");
+	if (argc != 9)
+		fail("usage: makeself [type] [version suffix] [version] [vendor id] [auth id] [sdk type] [elf] [self]");
 
 	get_type(argv[1]);
 	get_keys(argv[2]);
+	get_version(argv[3]);
+	get_vendor(argv[4]);
+	get_auth(argv[5]);
+	get_sdktype(argv[6]);
 
-	elf_size = get_filesize(argv[3]);
-	elf = mmap_file(argv[3]);
+	elf_size = get_filesize(argv[7]);
+	elf = mmap_file(argv[7]);
 
 	parse_elf();
 
@@ -339,7 +408,7 @@ int main(int argc, char *argv[])
 	sce_encrypt_data(self);
 	sce_encrypt_header(self, &ks);
 
-	fp = fopen(argv[4], "wb");
+	fp = fopen(argv[8], "wb");
 	if (fp == NULL)
 		fail("fopen(%s) failed", argv[4]);
 
