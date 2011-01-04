@@ -14,81 +14,63 @@
 
 u8 *pkg = NULL;
 static u64 dec_size;
+static u32 meta_offset;
+static u32 n_sections;
 
-static void parse_pkg(void);
-
-static void unpack_file(u32 i)
+static void unpack_content(void)
 {
-	u8 *ptr;
-	u8 name[33];
-	u64 offset;
-	u64 size;
-
-	ptr = pkg + 0x10 + 0x30 * i;
-
-	offset = be64(ptr + 0x00);
-	size   = be64(ptr + 0x08);
-
-	memset(name, 0, sizeof name);
-	strncpy((char *)name, (char *)(ptr + 0x10), 0x20);
-
-	printf("unpacking %s...\n", name);
-	memcpy_to_file((char *)name, pkg + offset, size);
-}
-
-static void parse_pkg_1(void)
-{
-	u32 n_files;
-	u64 size;
-	u32 i;
-
-	n_files = be32(pkg + 4);
-	size = be64(pkg + 8);
-
-	for (i = 0; i < n_files; i++)
-		unpack_file(i);
-}
-
-static void decompress_pkg(void *ptr)
-{
-	u32 meta_offset;
-	u32 n_sections;
-	u64 offset;
-	u64 size;
-	int compressed;
 	u8 *tmp;
-
-	meta_offset = be32(pkg + 0x0c);
-	n_sections  = be32(pkg + meta_offset + 0x60 + 0xc);
-
-	if (n_sections != 3)
-		fail("invalid package file.");
-
-	tmp = pkg + meta_offset + 0x80 + 0x30 * 0;
-	offset = be64(tmp);
-	if (be32(pkg + offset + 0x4) != 1)
-		fail("not a coreos package");
+	u8 *decompressed;
+	u64 offset;
+	u64 size;
+	u64 size_real;
 
 	tmp = pkg + meta_offset + 0x80 + 0x30 * 2;
+
+	offset = be64(tmp);
+	size = be64(tmp + 8);
+	size_real = dec_size - 0x80;
+
+	decompressed = malloc(size_real);
+	memset(decompressed, 0xaa, size_real);
+
+	decompress(pkg + offset, size, decompressed, size_real);
+
+	memcpy_to_file("content", decompressed, size_real);
+}
+
+static void unpack_info(u32 i)
+{
+	u8 *tmp;
+	u64 offset;
+	u64 size;
+	char path[256];
+
+	tmp = pkg + meta_offset + 0x80 + 0x30 * i;
+
+	snprintf(path, sizeof path, "info%d", i);
+
 	offset = be64(tmp);
 	size = be64(tmp + 8);
 
-	compressed = 0;
-	if (be32(tmp + 0x2c) == 0x2)
-		compressed = 1;
+	if (size != 0x40)
+		fail("weird info size: %08x", size);
 
-	if (compressed)
-		decompress(pkg + offset, size, ptr, dec_size); 
-	else
-		memcpy(ptr, pkg + offset, size);
+	memcpy_to_file(path, pkg + offset, size);
 }
 
-static void parse_pkg_sce(void)
+static void unpack_pkg(void)
+{
+	unpack_info(0);
+	unpack_info(1);
+	unpack_content();
+}
+
+static void decrypt_pkg(void)
 {
 	u16 flags;
 	u16 type;
 	u32 hdr_len;
-	u8 *ptr;
 	struct keylist *k;
 
 	flags    = be16(pkg + 0x08);
@@ -97,12 +79,7 @@ static void parse_pkg_sce(void)
 	dec_size = be64(pkg + 0x18);
 
 	if (type != 3)
-		fail("no update .pkg file");
-
-	if (flags & 0x8000) {
-		pkg += hdr_len;
-		return parse_pkg();
-	}
+		fail("no .pkg file");
 
 	k = keys_get(KEY_PKG);
 
@@ -112,24 +89,11 @@ static void parse_pkg_sce(void)
 	if (sce_decrypt_data(pkg) < 0)
 		fail("data decryption failed");
 
-	ptr = malloc(dec_size);
-	memset(ptr, 0, dec_size);
+	meta_offset = be32(pkg + 0x0c);
+	n_sections  = be32(pkg + meta_offset + 0x60 + 0xc);
 
-	decompress_pkg(ptr);
-
-	pkg = ptr;
-
-	parse_pkg();
-}
-
-static void parse_pkg(void)
-{
-	if (memcmp(pkg, "SCE", 3) == 0)
-		parse_pkg_sce();
-	else if (be32(pkg) == 1)
-		parse_pkg_1();
-	else
-		fail("unknown pkg type: %08x", be32(pkg));
+	if (n_sections != 3)
+		fail("invalid section count: %d", n_sections);
 }
 
 int main(int argc, char *argv[])
@@ -144,7 +108,8 @@ int main(int argc, char *argv[])
 	if (chdir(argv[2]) != 0)
 		fail("chdir");
 
-	parse_pkg();
+	decrypt_pkg();
+	unpack_pkg();
 
 	return 0;
 }
