@@ -1,6 +1,6 @@
 TOOLS	=	readself pupunpack unself unpkg sceverify
 TOOLS	+=	makeself makepkg norunpack puppack
-TOOLS	+=	unflashpkg
+TOOLS	+=	unflashpkg makeflashpkg
 COMMON	=	tools.o aes.o sha1.o ec.o bn.o
 DEPS	=	Makefile tools.h types.h
 
