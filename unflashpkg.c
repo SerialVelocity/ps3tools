@@ -15,40 +15,6 @@
 u8 *pkg = NULL;
 static u64 dec_size;
 
-static void parse_pkg(void);
-
-static void unpack_file(u32 i)
-{
-	u8 *ptr;
-	u8 name[33];
-	u64 offset;
-	u64 size;
-
-	ptr = pkg + 0x10 + 0x30 * i;
-
-	offset = be64(ptr + 0x00);
-	size   = be64(ptr + 0x08);
-
-	memset(name, 0, sizeof name);
-	strncpy((char *)name, (char *)(ptr + 0x10), 0x20);
-
-	printf("unpacking %s...\n", name);
-	memcpy_to_file((char *)name, pkg + offset, size);
-}
-
-static void parse_pkg_1(void)
-{
-	u32 n_files;
-	u64 size;
-	u32 i;
-
-	n_files = be32(pkg + 4);
-	size = be64(pkg + 8);
-
-	for (i = 0; i < n_files; i++)
-		unpack_file(i);
-}
-
 static void decompress_pkg(void *ptr)
 {
 	u32 meta_offset;
@@ -66,8 +32,8 @@ static void decompress_pkg(void *ptr)
 
 	tmp = pkg + meta_offset + 0x80 + 0x30 * 0;
 	offset = be64(tmp);
-	if (be32(pkg + offset + 0x4) != 1)
-		fail("not a coreos package");
+	if (be32(pkg + offset + 0x4) != 3)
+		fail("not a flash package");
 
 	tmp = pkg + meta_offset + 0x80 + 0x30 * 2;
 	offset = be64(tmp);
@@ -77,13 +43,14 @@ static void decompress_pkg(void *ptr)
 	if (be32(tmp + 0x2c) == 0x2)
 		compressed = 1;
 
+	printf("compressed: %d; %08x\n", compressed, be32(tmp + 0x2c));
 	if (compressed)
 		decompress(pkg + offset, size, ptr, dec_size); 
 	else
 		memcpy(ptr, pkg + offset, size);
 }
 
-static void parse_pkg_sce(void)
+static void decrypt_pkg(void)
 {
 	u16 flags;
 	u16 type;
@@ -97,12 +64,10 @@ static void parse_pkg_sce(void)
 	dec_size = be64(pkg + 0x18);
 
 	if (type != 3)
-		fail("no update .pkg file");
+		fail("no flash .pkg file");
 
-	if (flags & 0x8000) {
-		pkg += hdr_len;
-		return parse_pkg();
-	}
+	if (flags & 0x8000)
+		fail("not encrypted");
 
 	k = keys_get(KEY_PKG);
 
@@ -113,38 +78,31 @@ static void parse_pkg_sce(void)
 		fail("data decryption failed");
 
 	ptr = malloc(dec_size);
-	memset(ptr, 0, dec_size);
+	memset(ptr, 0xaa, dec_size);
 
 	decompress_pkg(ptr);
 
 	pkg = ptr;
-
-	parse_pkg();
 }
 
-static void parse_pkg(void)
+static void write_tar(const char *f)
 {
-	if (memcmp(pkg, "SCE", 3) == 0)
-		parse_pkg_sce();
-	else if (be32(pkg) == 1)
-		parse_pkg_1();
-	else
-		fail("unknown pkg type: %08x", be32(pkg));
+	FILE *fp;
+
+	fp = fopen(f, "wb");
+	fwrite(pkg, dec_size, 1, fp);
+	fclose(fp);
 }
 
 int main(int argc, char *argv[])
 {
 	if (argc != 3)
-		fail("usage: unpkg filename.pkg target");
+		fail("usage: unflashpkg filename.pkg target.tar");
 
 	pkg = mmap_file(argv[1]);
 
-	mkdir(argv[2], 0777);
-
-	if (chdir(argv[2]) != 0)
-		fail("chdir");
-
-	parse_pkg();
+	decrypt_pkg();
+	write_tar(argv[2]);
 
 	return 0;
 }
