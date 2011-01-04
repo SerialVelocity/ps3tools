@@ -76,6 +76,16 @@ static void read_pkg_header(void)
 	klist = keys_get(KEY_PKG);
 }
 
+static void read_spp_header(void)
+{
+	flags    =    be16(ptr + 0x08);
+	meta_offset = be32(ptr + 0x0c);
+	header_len =  be64(ptr + 0x10);
+	filesize =    be64(ptr + 0x18);
+
+	klist = keys_get(KEY_SPP);
+}
+
 static void decrypt(void)
 {
 	int keyid;
@@ -193,6 +203,8 @@ int main(int argc, char *argv[])
 		read_self_header();
 	else if(type == 3)
 		read_pkg_header();
+	else if(type == 4)
+		read_spp_header();
 	else
 		fail("Unknown type: %d", type);
 
