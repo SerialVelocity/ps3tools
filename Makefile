@@ -13,10 +13,10 @@ OBJS	= $(COMMON) $(addsuffix .o, $(TOOLS))
 all: $(TOOLS)
 
 $(TOOLS): %: %.o $(COMMON) $(DEPS)
-	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $< $(COMMON) 
+	$(CC) $(CFLAGS) -o $@ $< $(COMMON) $(LDFLAGS)
 
 $(OBJS): %.o: %.c $(DEPS)
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 clean:
-	-rm -f $(OBJS)
+	-rm -f $(OBJS) $(TOOLS)

@@ -37,11 +37,13 @@ static void do_toc(u8 *ptr)
 		if (strncmp(name, "asecure_loader", 0x20) == 0) {
 			new_dir("asecure_loader");
 			do_toc(ptr + be64(p));
-			chdir("..");
+			if (chdir("..") < 0)
+				fail("chdir(..)");
 		} else if (strncmp(name, "ros", 3) == 0) {
 			new_dir(name);
 			do_toc(ptr + be64(p) + 0x10);
-			chdir("..");
+			if (chdir("..") < 0)
+				fail("chdir(..)");
 		} else {
 			tmp = ptr + be64(p);
 			size = be64(p + 0x08);

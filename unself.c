@@ -229,7 +229,7 @@ static void check_elf(void)
 	u64 shstrtab_offset;
 	u16 n_phdr;
 	u16 n_shdr;
-	const char *shstrtab = ".unknown\0\0";
+	const char shstrtab[] = ".unknown\0\0";
 
 	fseek(out, 0, SEEK_SET);
 	fread(bfr, 4, 1, out);
@@ -355,7 +355,7 @@ int main(int argc, char *argv[])
 	if (key_ver != 0x8000)
 		self_decrypt();
 
-	out = fopen(argv[2], "w");
+	out = fopen(argv[2], "w+");
 
 	write_elf();
 	check_elf();

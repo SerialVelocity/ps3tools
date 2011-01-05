@@ -134,8 +134,10 @@ int main(int argc, char *argv[])
 
 	if(pup != NULL)
 	{
-		mkdir(argv[2], 0777);
-		chdir(argv[2]);
+		if (mkdir(argv[2], 0777) < 0)
+			fail("mkdir(%s)", argv[2]);
+		if (chdir(argv[2]) < 0)
+			fail("chdir(%s)", argv[2]);
 		do_pup();
 	}
 
