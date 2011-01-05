@@ -269,7 +269,7 @@ static int check_ecdsa(struct point *Q, u8 *R, u8 *S, u8 *hash)
 {
 	u8 Sinv[21];
 	u8 e[21];
-	u8 w1[20], w2[20];
+	u8 w1[21], w2[21];
 	struct point r1, r2;
 	u8 rr[21];
 
