@@ -104,7 +104,7 @@ static int point_is_on_curve(u8 *p)
 }
 #endif
 
-static int point_zero(struct point *p)
+static void point_zero(struct point *p)
 {
 	elt_zero(p->x);
 	elt_zero(p->y);
