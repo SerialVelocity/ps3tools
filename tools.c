@@ -102,12 +102,11 @@ const char *id2name(u32 id, struct id2name_tbl *t, const char *unk)
 	return unk;
 }
 
-// TODO: use real random numbers here
 void get_rand(u8 *bfr, u32 size)
 {
 	FILE *fp;
 
-	fp = fopen("/dev/random", "r");
+	fp = fopen("/dev/urandom", "r");
 	if (fp == NULL)
 		fail("unable to open random");
 
@@ -472,7 +471,6 @@ struct keylist *keys_get(enum sce_key type)
 
 			snprintf(path, sizeof path, "%s/%s-pub-%s", base, name, id);
 			if (key_read(path, 40, klist->keys[klist->n].pub) == 0) {
-
 				snprintf(path, sizeof path, "%s/%s-ctype-%s", base, name, id);
 				key_read(path, 4, bfr);
 
