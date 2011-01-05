@@ -217,20 +217,14 @@ static void sign_pkg(void)
 	ecdsa_sign(hash, r, s);
 }
 
-static void write_pkg(const char *f)
-{
-	fwrite(pkg, pkg_size, 1, fp);
-	fclose(fp);
-}
-
 int main(int argc, char *argv[])
 {
 	if (argc != 4)
 		fail("usage: pkg [key suffix] [contents] [filename.pkg]");
 
-	fp = fopen(f, "wb");
+	fp = fopen(argv[3], "wb");
 	if (fp == NULL)
-		fail("fopen(%s) failed", f);
+		fail("fopen(%s) failed", argv[3]);
 
 	if (chdir(argv[2]) < 0)
 		fail("chdir");
@@ -251,7 +245,8 @@ int main(int argc, char *argv[])
 	sce_encrypt_data(pkg);
 	sce_encrypt_header(pkg, &k);
 
-	write_pkg(argv[3]);
+	fwrite(pkg, pkg_size, 1, fp);
+	fclose(fp);
 
 	return 0;
 }
