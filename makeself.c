@@ -11,6 +11,7 @@
 #include <limits.h>
 #include <sys/stat.h>
 
+#define	ALIGNMENT	0x20
 #define	MAX_PHDR	255
 
 static u8 *elf = NULL;
@@ -25,6 +26,7 @@ static int arch64;
 static u8 sce_header[0x70];
 static u8 info_header[0x20];
 static u8 ctrl_header[0x70];
+static u8 version_header[0x10];
 
 static u8 *sec_header;
 static u32 sec_header_size;
@@ -36,6 +38,7 @@ static u64 header_size;
 static u32 meta_offset;
 static u64 elf_size;
 static u64 info_offset;
+static u64 version_offset;
 static u64 elf_offset;
 static u64 phdr_offset;
 static u64 shdr_offset;
@@ -104,16 +107,23 @@ static void build_sce_hdr(void)
 	wbe16(sce_header + 0x0a, 1);		// SCE header type; self
 	wbe32(sce_header + 0x0c, meta_offset);
 	wbe64(sce_header + 0x10, header_size);
-	wbe64(sce_header + 0x18, elf_size);
+	wbe64(sce_header + 0x18, round_up(elf_size, ALIGNMENT));
 	wbe64(sce_header + 0x20, 3);		// dunno, has to be 3
 	wbe64(sce_header + 0x28, info_offset);
 	wbe64(sce_header + 0x30, elf_offset);
 	wbe64(sce_header + 0x38, phdr_offset);
 	wbe64(sce_header + 0x40, shdr_offset);
 	wbe64(sce_header + 0x48, sec_offset);
-	wbe64(sce_header + 0x50, 0xf0f);
+	wbe64(sce_header + 0x50, version_offset);
 	wbe64(sce_header + 0x58, ctrl_offset);
 	wbe64(sce_header + 0x60, 0x70);		// ctrl size
+}
+
+static void build_version_hdr(void)
+{
+	memset(version_header, 0, sizeof version_header);
+	wbe32(version_header, 1);
+	wbe32(version_header + 0x08, 0x10);
 }
 
 static void build_info_hdr(void)
@@ -123,14 +133,23 @@ static void build_info_hdr(void)
 	memset(info_header, 0, sizeof info_header);
 
 	switch (type) {
-		case KEY_APP:
-			app_type = 4;
+		case KEY_LV0:
+			app_type = 1;
+			break;
+		case KEY_LV1:
+			app_type = 2;
 			break;
 		case KEY_LV2:
 			app_type = 3;
 			break;
+		case KEY_APP:
+			app_type = 4;
+			break;
 		case KEY_ISO:
 			app_type = 5;
+			break;
+		case KEY_LDR:
+			app_type = 6;
 			break;
 		default:
 			fail("something that should never fail failed.");	
@@ -221,7 +240,7 @@ static void build_meta_hdr(void)
 
 	meta_header_size = 0x80 + ehdr.e_phnum * (0x30 + 0x20 + 0x60) + 0x30;
 	meta_header = malloc(meta_header_size);
-	memset(meta_header, 0, sizeof meta_header);
+	memset(meta_header, 0, meta_header_size);
 
 	ptr = meta_header + 0x20;
 
@@ -272,6 +291,7 @@ static void build_hdr(void)
 {
 	memcpy(self, sce_header, sizeof sce_header);
 	memcpy(self + info_offset, info_header, sizeof info_header);
+	memcpy(self + version_offset, version_header, sizeof version_header);
 	memcpy(self + ctrl_offset, ctrl_header, sizeof ctrl_header);
 	memcpy(self + sec_offset, sec_header, sec_header_size);
 	memcpy(self + phdr_offset, elf + ehdr.e_phoff, ehdr.e_phnum * ehdr.e_phentsize);
@@ -373,6 +393,7 @@ static void get_sdktype(char * t)
 int main(int argc, char *argv[])
 {
 	FILE *fp;
+	u8 bfr[ALIGNMENT];
 
 	if (argc != 9)
 		fail("usage: makeself [type] [version suffix] [version] [vendor id] [auth id] [sdk type] [elf] [self]");
@@ -390,19 +411,21 @@ int main(int argc, char *argv[])
 	parse_elf();
 
 	info_offset = 0x70;
-	ctrl_offset = round_up(info_offset + 0x20, 0x10);
-	sec_offset = round_up(ctrl_offset + 0x70, 0x10);
-	elf_offset = round_up(sec_offset + ehdr.e_phnum * 0x20, 0x10);
-	phdr_offset = round_up(elf_offset + ehdr.e_ehsize, 0x10);	
-	shdr_offset = round_up(phdr_offset + ehdr.e_phentsize * ehdr.e_phnum, 0x10);	
-	meta_offset = round_up(shdr_offset + ehdr.e_shentsize * ehdr.e_shnum, 0x10);
-	header_size = round_up(meta_offset + 0x80 + ehdr.e_phnum * (0x30 + 0x20 + 0x60) + 0x30, 0x10);
+	version_offset = round_up(info_offset + 0x20, ALIGNMENT);
+	ctrl_offset = round_up(version_offset + 0x10, ALIGNMENT);
+	sec_offset = round_up(ctrl_offset + 0x70, ALIGNMENT);
+	elf_offset = round_up(sec_offset + ehdr.e_phnum * 0x20, ALIGNMENT);
+	phdr_offset = round_up(elf_offset + ehdr.e_ehsize, ALIGNMENT);	
+	shdr_offset = round_up(phdr_offset + ehdr.e_phentsize * ehdr.e_phnum, ALIGNMENT);	
+	meta_offset = round_up(shdr_offset + ehdr.e_shentsize * ehdr.e_shnum, ALIGNMENT);
+	header_size = round_up(meta_offset + 0x80 + ehdr.e_phnum * (0x30 + 0x20 + 0x60) + 0x30, ALIGNMENT);
 
 	build_sce_hdr();
 	build_info_hdr();
 	build_ctrl_hdr();
 	build_sec_hdr();
 	build_meta_hdr();
+	build_version_hdr();
 
 	self = malloc(header_size + elf_size);
 	memset(self, 0, header_size + elf_size);
@@ -420,6 +443,9 @@ int main(int argc, char *argv[])
 
 	if (fwrite(self, header_size + elf_size, 1, fp) != 1)
 		fail("unable to write self");
+
+	memset(bfr, 0, sizeof bfr);
+	fwrite(self, round_up(elf_size, ALIGNMENT) - elf_size, 1, fp);
 
 	fclose(fp);
 
