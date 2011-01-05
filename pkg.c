@@ -14,6 +14,7 @@
 #include <zlib.h>
 
 static struct key k;
+static FILE *fp;
 
 static u8 info0[0x40];
 static u8 info1[0x40];
@@ -218,12 +219,6 @@ static void sign_pkg(void)
 
 static void write_pkg(const char *f)
 {
-	FILE *fp;
-
-	fp = fopen(f, "wb");
-	if (fp == NULL)
-		fail("fopen(%s) failed", f);
-
 	fwrite(pkg, pkg_size, 1, fp);
 	fclose(fp);
 }
@@ -232,6 +227,10 @@ int main(int argc, char *argv[])
 {
 	if (argc != 4)
 		fail("usage: pkg [key suffix] [contents] [filename.pkg]");
+
+	fp = fopen(f, "wb");
+	if (fp == NULL)
+		fail("fopen(%s) failed", f);
 
 	if (chdir(argv[2]) < 0)
 		fail("chdir");
@@ -252,7 +251,6 @@ int main(int argc, char *argv[])
 	sce_encrypt_data(pkg);
 	sce_encrypt_header(pkg, &k);
 
-	chdir("../");
 	write_pkg(argv[3]);
 
 	return 0;
