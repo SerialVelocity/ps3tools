@@ -83,6 +83,9 @@ static void decrypt_pkg(void)
 
 	k = keys_get(KEY_PKG);
 
+	if (k == NULL)
+		fail("no key found");
+
 	if (sce_decrypt_header(pkg, k) < 0)
 		fail("header decryption failed");
 
