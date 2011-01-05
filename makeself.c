@@ -254,6 +254,7 @@ static void build_meta_hdr(void)
 	wbe32(ptr + 0x08, 1);
 	wbe32(ptr + 0x0c, ehdr.e_phnum);	// number of encrypted headers
 	wbe32(ptr + 0x10, ehdr.e_phnum * 8);	// number of keys/hashes required
+	wbe32(ptr + 0x14, meta_header_size / 0x10);
 	ptr += 0x20;
 
 	// add encrypted phdr information
