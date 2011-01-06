@@ -31,12 +31,16 @@ static void unpack_content(const char *name)
 	size = be64(tmp + 8);
 	size_real = dec_size - 0x80;
 
-	decompressed = malloc(size_real);
-	memset(decompressed, 0xaa, size_real);
+	if (be32(tmp + 0x2c) == 0x2) {
+		decompressed = malloc(size_real);
+		memset(decompressed, 0xaa, size_real);
 
-	decompress(pkg + offset, size, decompressed, size_real);
+		decompress(pkg + offset, size, decompressed, size_real);
 
-	memcpy_to_file(name, decompressed, size_real);
+		memcpy_to_file(name, decompressed, size_real);
+	} else {
+		memcpy_to_file(name, pkg + offset, size);
+	}
 }
 
 static void unpack_info(u32 i)
