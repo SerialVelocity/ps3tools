@@ -244,12 +244,14 @@ void elf_write_shdr(int arch64, u8 *shdr, struct elf_shdr *s)
 //
 // crypto
 //
-void aes256cbc(u8 *key, u8 *iv, u8 *in, u64 len, u8 *out)
+void aes256cbc(u8 *key, u8 *iv_in, u8 *in, u64 len, u8 *out)
 {
 	AES_KEY k;
 	u32 i;
 	u8 tmp[16];
+	u8 iv[16];
 
+	memcpy(iv, iv_in, 16);
 	memset(&k, 0, sizeof k);
 	AES_set_decrypt_key(key, 256, &k);
 

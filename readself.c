@@ -245,6 +245,8 @@ static void show_ctrl(void)
 			case 2:
 				if (length == 0x40) {
 					printf("  file digest:\n    ");
+					print_hash(self + ctrl_offset + i + 0x10, 0x14);
+					printf("\n    ");
 					print_hash(self + ctrl_offset + i + 0x24, 0x14);
 					printf("\n");
 					break;
