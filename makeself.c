@@ -446,7 +446,7 @@ int main(int argc, char *argv[])
 		fail("unable to write self");
 
 	memset(bfr, 0, sizeof bfr);
-	fwrite(self, round_up(elf_size, ALIGNMENT) - elf_size, 1, fp);
+	fwrite(bfr, round_up(elf_size, ALIGNMENT) - elf_size, 1, fp);
 
 	fclose(fp);
 
