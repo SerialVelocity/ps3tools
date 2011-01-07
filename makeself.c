@@ -279,6 +279,8 @@ static void calculate_hashes(void)
 	keys = self + meta_offset + 0x80 + (0x30 * ehdr.e_phnum);
 
 	for (i = 0; i < ehdr.e_phnum; i++) {
+		printf("%d\n", i);
+		printf("%08x\n", phdr[i].p_off);
 		memset(keys + (i * 8 * 0x10), 0, 0x20);
 		sha1_hmac(keys + ((i * 8) + 2) * 0x10,
 		          elf + phdr[i].p_off,
@@ -419,7 +421,7 @@ int main(int argc, char *argv[])
 	phdr_offset = round_up(elf_offset + ehdr.e_ehsize, ALIGNMENT);	
 	shdr_offset = round_up(phdr_offset + ehdr.e_phentsize * ehdr.e_phnum, ALIGNMENT);	
 	meta_offset = round_up(shdr_offset + ehdr.e_shentsize * ehdr.e_shnum, ALIGNMENT);
-	header_size = round_up(meta_offset + 0x80 + ehdr.e_phnum * (0x30 + 0x20 + 0x60) + 0x30, ALIGNMENT);
+	header_size = round_up(meta_offset + 0x80 + ehdr.e_phnum * (0x30 + 0x20 + 0x60) + 0x30, 0x80);
 
 	build_sce_hdr();
 	build_info_hdr();
