@@ -63,6 +63,13 @@ static void read_self_header(void)
 
 	app_type =    be32(ptr + info_offset + 0x0c);
 
+        printf("Auth ID: %llu\n", be64(ptr + info_offset + 0x00));
+        printf("Vendor ID: %u\n", be32(ptr + info_offset + 0x08));
+        printf("App Type: %u\n", be32(ptr + info_offset + 0x0c));
+        printf("Version full: %llu\n", be64(ptr + info_offset + 0x10));
+        u64 version = be64(ptr + info_offset + 0x10);
+        printf("Version: %llu.%llu.%llu\n\n", (version >> 48) & 0xffff, (version >> 32) & 0xffff, version & 0xffff);
+
 	klist = self_load_keys();
 }
 
@@ -86,10 +93,48 @@ static void read_spp_header(void)
 	klist = keys_get(KEY_SPP);
 }
 
+int keyid;
+
+static void fixECDSA(const char *fname, u64 changeAuthID)
+{
+	u8 *r, *s;
+	u8 hash[20];
+	u64 sig_len;
+
+	wbe64(ptr + info_offset + 0x00, be64(ptr + info_offset + 0x00) + changeAuthID);
+
+	sig_len = be64(ptr + meta_offset + 0x60);
+	r = ptr + sig_len;
+	s = r + 21;
+
+	sha1(ptr, sig_len, hash);
+	if (ecdsa_verify(hash, r, s))
+		//return;
+
+	printf("Fixing ECDSA\n");
+
+	if (klist->keys[keyid].priv_avail < 0)
+		fail("  Can't fix ECDSA, no private key available");
+
+	ecdsa_set_priv(klist->keys[keyid].priv);
+	ecdsa_sign(hash, r, s);
+
+	printf("  Testing new signature...\n");
+	if(ecdsa_verify(hash, r, s))
+		printf("    Status: OK\n");
+	else
+		fail("    New signature failed");
+
+	//sce_encrypt_data(ptr);
+	//sce_encrypt_header(ptr, &klist->keys[keyid]);
+
+	u8 newContents[header_len + filesize];
+	memcpy(newContents, ptr, sizeof newContents);
+	memcpy_to_file(fname, newContents, sizeof newContents);
+}
+
 static void decrypt(void)
 {
-	int keyid;
-       
 	keyid = sce_decrypt_header(ptr, klist);
 
 	if (keyid < 0)
@@ -147,11 +192,11 @@ static int verify_hash(u8 *p, u8 *hashes)
 	key = hash + 0x20;
 
 	// XXX: possible integer overflow here
-	if (offset > (filesize + header_len))
+	if (offset > (filesize + header_len) && filesize > 0)
 		return 1;
 
 	// XXX: possible integer overflow here
-	if ((offset + size) > (filesize + header_len))
+	if ((offset + size) > (filesize + header_len) && filesize > 0)
 		return 1;
 
 	sha1_hmac(key, ptr + offset, size, result);
@@ -192,8 +237,8 @@ static void verify_hashes(void)
 
 int main(int argc, char *argv[])
 {
-	if (argc != 2)
-		fail("usage: sceverify filename");
+	if (argc != 2 && argc != 3)
+		fail("usage: sceverify filename [incrementAuthIDBy]");
 
 	ptr = mmap_file(argv[1]);
 
@@ -221,5 +266,9 @@ int main(int argc, char *argv[])
 	if (did_fail)
 		printf(" * please not that the hash will always fail for "
 		       "unaligned non-LOAD phdrs\n");
+
+	if(argc == 3)
+		fixECDSA(argv[1], strtoull(argv[2], NULL, 10));
+
 	return 0;
 }

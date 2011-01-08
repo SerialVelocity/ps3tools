@@ -46,7 +46,7 @@ void memcpy_to_file(const char *fname, u8 *ptr, u64 size)
 {
 	FILE *fp;
 
-	fp = fopen(fname, "w");
+	fp = fopen(fname, "wb");
 	fwrite(ptr, size, 1, fp);
 	fclose(fp);
 }
